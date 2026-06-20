@@ -1,0 +1,19 @@
+---
+import '@/styles/global.css';
+import DashboardApp from '@/components/dashboard/DashboardApp';
+---
+<html lang="es">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <meta name="robots" content="noindex,nofollow" />
+    <meta name="generator" content={Astro.generator} />
+    <meta name="theme-color" content="#01205e" />
+    <title>Droguería La Nena (Dronena) · Cierre comercial Mayo 2026</title>
+    <link rel="preconnect" href="https://fonts.bunny.net" />
+    <link rel="stylesheet" href="https://fonts.bunny.net/css?family=geist:300,400,500,600,700|geist-mono:400,500,600&display=swap" />
+  </head>
+  <body class="bg-brand-surface antialiased">
+    <DashboardApp client:idle />
+  </body>
+</html>

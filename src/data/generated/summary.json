@@ -1,0 +1,48 @@
+{
+  "generatedAt": "2026-06-20T18:15:13.816Z",
+  "totalSheets": 9,
+  "totalRows": 2394,
+  "totalColumns": 84,
+  "sheetNames": [
+    "1. DIST CUOTA 2026 RESULTADO",
+    "2. REGIONES- GRUP CAD IND",
+    "3. ESTADOS",
+    "4. PROVEEDORES",
+    "5. CATEGORIA",
+    "6. TOP CLIENTES",
+    "7. CXC",
+    "8. CIERRE COB NACIONAL 2025",
+    "CIERRE COB 2025"
+  ],
+  "columnTypeCounts": {
+    "text": 3,
+    "month": 3,
+    "number": 50,
+    "percent": 19,
+    "category": 9
+  },
+  "candidates": {
+    "ventas": [
+      "1. DIST CUOTA 2026 RESULTADO",
+      "8. CIERRE COB NACIONAL 2025",
+      "CIERRE COB 2025"
+    ],
+    "cobranza": [
+      "7. CXC"
+    ],
+    "visitas": [],
+    "proveedores": [
+      "4. PROVEEDORES"
+    ],
+    "regiones": [
+      "2. REGIONES- GRUP CAD IND",
+      "3. ESTADOS"
+    ],
+    "clientes": [
+      "6. TOP CLIENTES"
+    ],
+    "categorias": [
+      "5. CATEGORIA"
+    ]
+  }
+}
