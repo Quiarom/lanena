@@ -7,6 +7,7 @@ import { RoadmapPanel } from './RoadmapPanel';
 import { Card, CardHeader } from '@/components/ui/Card';
 import { Badge } from '@/components/ui/Badge';
 import { Table } from '@/components/ui/Table';
+import { Tabs } from '@/components/ui/Tabs';
 import { D3BarChart } from '@/components/charts/D3BarChart';
 import { D3HorizontalBarChart } from '@/components/charts/D3HorizontalBarChart';
 import { D3DonutChart } from '@/components/charts/D3DonutChart';
@@ -236,8 +237,7 @@ function RegionesSection() {
   const varTotal = totalAnt > 0 ? totalActual / totalAnt - 1 : 0;
   const varUnidTotal = totalUnidAnt > 0 ? totalUnid / totalUnidAnt - 1 : 0;
 
-  const topUsd = regRows.map((r) => ({ key: r.region, value: r.actual }));
-  const topUnd = [...regRows].sort((a, b) => b.unid - a.unid).map((r) => ({ key: r.region, value: r.unid }));
+  const leaderUnidades = [...regRows].sort((a, b) => b.unid - a.unid)[0];
 
   const totalRow = {
     region: 'Total',
@@ -270,20 +270,9 @@ function RegionesSection() {
           { label: `Líder USD · ${regRows[0]?.region ?? '—'}`, value: regRows[0] ? fmtCurrency(regRows[0].actual, { short: true }) : '—', caption: regRows[0] ? `${fmtPercent(regRows[0].peso)} del total · ${fmtDelta(regRows[0].varUsd)} vs 2025` : undefined, tone: regRows[0] ? tone(regRows[0].varUsd) : 'neutral' },
           { label: 'Total ventas USD', value: fmtCurrency(totalActual, { short: true }), caption: `vs ${fmtCurrency(totalAnt, { short: true })} 2025`, tone: tone(varTotal), delta: fmtDelta(varTotal) },
           { label: 'Total unidades', value: fmtNumber(totalUnid, { short: true }), caption: `vs ${fmtNumber(totalUnidAnt, { short: true })} 2025`, tone: tone(varUnidTotal), delta: fmtDelta(varUnidTotal) },
-          { label: 'Regiones', value: String(regRows.length), caption: `Líder unidades · ${topUnd[0]?.key ?? '—'}` },
+          { label: 'Regiones', value: String(regRows.length), caption: `Líder unidades · ${leaderUnidades?.region ?? '—'}` },
         ]} cols={4} />
       </Card>
-
-      <div className="grid md:grid-cols-2 gap-4">
-        <Card>
-          <CardHeader title="Ranking regiones por USD" subtitle="Ventas año 2026 (USD)" />
-          <D3HorizontalBarChart data={topUsd} format={(n) => fmtCurrency(n, { short: true })} color="#01205e" />
-        </Card>
-        <Card>
-          <CardHeader title="Ranking regiones por unidades" subtitle="Año 2026 (unidades)" />
-          <D3HorizontalBarChart data={topUnd} format={(n) => fmtNumber(n, { short: true })} color="#1f5dc9" />
-        </Card>
-      </div>
 
       <Card>
         <CardHeader title="Detalle por región" subtitle="Comparativo anterior vs actual · USD y unidades" />
@@ -318,21 +307,31 @@ function EstadosCard({ sheet }: { sheet: import('@/lib/data-inference').SheetDat
   const varTotal = totalAnt > 0 ? totalActual / totalAnt - 1 : 0;
   const varUnidTotal = totalUnidAnt > 0 ? totalUnid / totalUnidAnt - 1 : 0;
 
-  const topUsd = rows.slice(0, 15).map((r) => ({ key: r.estado, value: r.actual }));
-  const topUnd = [...rows].sort((a, b) => b.unid - a.unid).slice(0, 15).map((r) => ({ key: r.estado, value: r.unid }));
+  const leaderUnidades = [...rows].sort((a, b) => b.unid - a.unid)[0];
+
+  const regiones = Array.from(new Set(rows.map((r) => r.region).filter(Boolean))).sort();
+  const [regionFilter, setRegionFilter] = useState<string>('TODAS');
+  const filtered = regionFilter === 'TODAS' ? rows : rows.filter((r) => r.region === regionFilter);
+
+  const fActual = filtered.reduce((s, r) => s + r.actual, 0);
+  const fAnt = filtered.reduce((s, r) => s + r.anterior, 0);
+  const fUnid = filtered.reduce((s, r) => s + r.unid, 0);
+  const fUnidAnt = filtered.reduce((s, r) => s + r.unidAnt, 0);
+  const fVar = fAnt > 0 ? fActual / fAnt - 1 : 0;
+  const fVarUnd = fUnidAnt > 0 ? fUnid / fUnidAnt - 1 : 0;
 
   const totalRow = {
     region: '',
     estado: 'Total',
-    anterior: totalAnt,
-    actual: totalActual,
-    peso: 1,
-    varUsd: varTotal,
-    unidAnt: totalUnidAnt,
-    unid: totalUnid,
-    varUnd: varUnidTotal,
+    anterior: fAnt,
+    actual: fActual,
+    peso: regionFilter === 'TODAS' ? 1 : (totalActual > 0 ? fActual / totalActual : 0),
+    varUsd: fVar,
+    unidAnt: fUnidAnt,
+    unid: fUnid,
+    varUnd: fVarUnd,
   };
-  const allRows = [...rows, totalRow];
+  const allRows = [...filtered, totalRow];
 
   const estCols: ColumnSpec[] = [
     { key: 'region', label: 'Región IMS', type: 'category', uniqueCount: 0, filterable: true, role: 'dimension' },
@@ -352,26 +351,22 @@ function EstadosCard({ sheet }: { sheet: import('@/lib/data-inference').SheetDat
         <CardHeader title="Estados de Venezuela" subtitle={`${rows.length} estados · cierre ${pdfReference.period}`} />
         <KpiGrid items={[
           { label: `Líder USD · ${rows[0]?.estado ?? '—'}`, value: rows[0] ? fmtCurrency(rows[0].actual, { short: true }) : '—', caption: rows[0] ? `${rows[0].region} · ${fmtPercent(rows[0].peso)} · ${fmtDelta(rows[0].varUsd)}` : undefined, tone: rows[0] ? tone(rows[0].varUsd) : 'neutral' },
-          { label: `Líder unidades · ${topUnd[0]?.key ?? '—'}`, value: topUnd[0] ? fmtNumber(topUnd[0].value, { short: true }) : '—' },
+          { label: `Líder unidades · ${leaderUnidades?.estado ?? '—'}`, value: leaderUnidades ? fmtNumber(leaderUnidades.unid, { short: true }) : '—' },
           { label: 'Total ventas USD', value: fmtCurrency(totalActual, { short: true }), caption: `vs ${fmtCurrency(totalAnt, { short: true })} 2025`, tone: tone(varTotal), delta: fmtDelta(varTotal) },
           { label: 'Estados activos', value: String(rows.length), caption: `${fmtNumber(totalUnid, { short: true })} unidades` },
         ]} cols={4} />
       </Card>
 
-      <div className="grid md:grid-cols-2 gap-4">
-        <Card>
-          <CardHeader title="Top 15 estados por USD" subtitle="Ventas año 2026 (USD)" />
-          <D3HorizontalBarChart data={topUsd} format={(n) => fmtCurrency(n, { short: true })} color="#01205e" />
-        </Card>
-        <Card>
-          <CardHeader title="Top 15 estados por unidades" subtitle="Año 2026 (unidades)" />
-          <D3HorizontalBarChart data={topUnd} format={(n) => fmtNumber(n, { short: true })} color="#1f5dc9" />
-        </Card>
-      </div>
-
       <Card>
-        <CardHeader title="Detalle por estado" subtitle="Ordená por columnas · incluye total" />
-        <Table columns={estCols} rows={allRows} pageSize={15} dense />
+        <CardHeader title="Detalle por estado" subtitle="Desglose por región IMS · ordená por columnas" />
+        <Tabs
+          tabs={[{ id: 'TODAS', label: `Todas (${rows.length})` }, ...regiones.map((r) => ({ id: r, label: r }))]}
+          value={regionFilter}
+          onChange={setRegionFilter}
+        />
+        <div className="mt-3">
+          <Table columns={estCols} rows={allRows} pageSize={allRows.length} dense />
+        </div>
       </Card>
     </>
   );
@@ -546,59 +541,124 @@ function ProveedoresSection() {
 }
 
 // ---------- Categorías ----------
+const CATEGORIA_COLS: ColumnSpec[] = [
+  { key: 'categoria', label: 'Categoría', type: 'category', uniqueCount: 0, filterable: false, role: 'dimension' },
+  { key: 'anterior', label: 'Ventas $ año anterior', type: 'currency', uniqueCount: 0, filterable: true, role: 'measure' },
+  { key: 'actual', label: 'Ventas $ año actual', type: 'currency', uniqueCount: 0, filterable: true, role: 'measure' },
+  { key: 'peso', label: '% Peso', type: 'percent', uniqueCount: 0, filterable: true, role: 'measure' },
+  { key: 'varUsd', label: '% Var. interanual USD', type: 'percent', uniqueCount: 0, filterable: true, role: 'measure' },
+  { key: 'unidAnt', label: 'Ventas Unid. año anterior', type: 'number', uniqueCount: 0, filterable: true, role: 'measure' },
+  { key: 'unid', label: 'Ventas Unid. año actual', type: 'number', uniqueCount: 0, filterable: true, role: 'measure' },
+  { key: 'varUnd', label: '% Var. interanual Und', type: 'percent', uniqueCount: 0, filterable: true, role: 'measure' },
+];
+
+function mapCategoriaRows(raw: Record<string, unknown>[]) {
+  return raw
+    .filter((r) => r.categorias && String(r.categorias).trim().toUpperCase() !== 'TOTAL')
+    .map((r) => ({
+      categoria: String(r.categorias).trim(),
+      anterior: Number(r.ventas_ano_anterior) || 0,
+      actual: Number(r.ventas_ano_actual) || 0,
+      peso: Number(r.peso) || 0,
+      varUsd: Number(r.var_interanual_usd) || 0,
+      unidAnt: Number(r.ventas_unid_ano_anterior) || 0,
+      unid: Number(r.ventas_unid_ano_actual) || 0,
+      varUnd: Number(r.var_interanual_und) || 0,
+    }))
+    .filter((r) => r.actual > 0 || r.anterior > 0)
+    .sort((a, b) => b.actual - a.actual);
+}
+
+function CategoriaBlock({
+  title,
+  subtitle,
+  rows,
+  donutTitle,
+  donutSubtitle,
+}: {
+  title: string;
+  subtitle: string;
+  rows: ReturnType<typeof mapCategoriaRows>;
+  donutTitle: string;
+  donutSubtitle: string;
+}) {
+  if (rows.length === 0) {
+    return <Card><CardHeader title={title} subtitle={subtitle} /><p className="text-sm text-slate-500">No hay filas para este criterio.</p></Card>;
+  }
+  const totalActual = rows.reduce((s, r) => s + r.actual, 0);
+  const totalAnt = rows.reduce((s, r) => s + r.anterior, 0);
+  const totalUnid = rows.reduce((s, r) => s + r.unid, 0);
+  const totalUnidAnt = rows.reduce((s, r) => s + r.unidAnt, 0);
+  const varTotal = totalAnt > 0 ? totalActual / totalAnt - 1 : 0;
+  const varUnidTotal = totalUnidAnt > 0 ? totalUnid / totalUnidAnt - 1 : 0;
+  const totalRow = {
+    categoria: 'Total',
+    anterior: totalAnt,
+    actual: totalActual,
+    peso: 1,
+    varUsd: varTotal,
+    unidAnt: totalUnidAnt,
+    unid: totalUnid,
+    varUnd: varUnidTotal,
+  };
+  const rowsWithTotal = [...rows, totalRow];
+  const donut = rows.map((r) => ({ key: r.categoria, value: r.actual }));
+  const leader = rows[0];
+
+  return (
+    <div className="space-y-4">
+      <Card>
+        <CardHeader title={title} subtitle={subtitle} />
+        <KpiGrid items={[
+          { label: `Líder USD · ${leader?.categoria ?? '—'}`, value: leader ? fmtCurrency(leader.actual, { short: true }) : '—', caption: leader ? `${fmtPercent(leader.peso)} del total · ${fmtDelta(leader.varUsd)} vs 2025` : undefined, tone: leader ? tone(leader.varUsd) : 'neutral' },
+          { label: 'Total ventas USD', value: fmtCurrency(totalActual, { short: true }), caption: `vs ${fmtCurrency(totalAnt, { short: true })} 2025`, tone: tone(varTotal), delta: fmtDelta(varTotal) },
+          { label: 'Total unidades', value: fmtNumber(totalUnid, { short: true }), caption: `vs ${fmtNumber(totalUnidAnt, { short: true })} 2025`, tone: tone(varUnidTotal), delta: fmtDelta(varUnidTotal) },
+          { label: 'Categorías', value: String(rows.length) },
+        ]} cols={4} />
+      </Card>
+
+      <div className="grid md:grid-cols-2 gap-4">
+        <Card>
+          <CardHeader title="Detalle" subtitle="Comparativo año actual vs año anterior · incluye total" />
+          <Table columns={CATEGORIA_COLS} rows={rowsWithTotal} pageSize={rowsWithTotal.length} dense />
+        </Card>
+        <Card>
+          <CardHeader title={donutTitle} subtitle={donutSubtitle} />
+          <D3DonutChart data={donut} format={(n) => fmtCurrency(n, { short: true })} />
+        </Card>
+      </div>
+    </div>
+  );
+}
+
 function CategoriasSection() {
   const sheet = findSheet(/categor|tipo|familia|linea/i);
   if (!sheet) return <Card><CardHeader title="Categorías" /><p className="text-sm text-slate-500">Hoja de categorías no encontrada.</p></Card>;
 
-  const rows = sheet.rows
-    .filter((r) => r.categorias && String(r.categorias).toUpperCase() !== 'TOTAL')
-    .map((r) => ({
-      categoria: String(r.categorias).trim(),
-      actual: Number(r.ventas_ano_actual) || 0,
-      anterior: Number(r.ventas_ano_anterior) || 0,
-      peso: Number(r.peso) || 0,
-      varUsd: Number(r.var_interanual_usd) || 0,
-      unid: Number(r.ventas_unid_ano_actual) || 0,
-      varUnd: Number(r.var_interanual_und) || 0,
-    }))
-    .filter((r) => r.actual > 0)
-    .sort((a, b) => b.actual - a.actual);
+  // ponytail: sheet has two stacked blocks separated by a header row where categorias === 'TIPO'
+  const splitIdx = sheet.rows.findIndex((r) => String(r.categorias ?? '').trim().toUpperCase() === 'TIPO');
+  const tipoRaw  = splitIdx >= 0 ? sheet.rows.slice(0, splitIdx)  : sheet.rows;
+  const lineaRaw = splitIdx >= 0 ? sheet.rows.slice(splitIdx + 1) : [];
 
-  const donut = rows.slice(0, 8).map((r) => ({ key: r.categoria, value: r.actual }));
-  const bar = rows.slice(0, 12).map((r) => ({ key: r.categoria, value: r.actual }));
-
-  const catRowsWithUnidAnt = rows.map((r) => {
-    const orig = sheet.rows.find((x) => String(x.categorias).trim() === r.categoria);
-    return { ...r, unidAnt: orig ? Number(orig.ventas_unid_ano_anterior) || 0 : 0 };
-  });
-
-  const cols: ColumnSpec[] = [
-    { key: 'categoria', label: 'Categoría', type: 'category', uniqueCount: 0, filterable: false, role: 'dimension' },
-    { key: 'anterior', label: 'Ventas $ año anterior', type: 'currency', uniqueCount: 0, filterable: true, role: 'measure' },
-    { key: 'actual', label: 'Ventas $ año actual', type: 'currency', uniqueCount: 0, filterable: true, role: 'measure' },
-    { key: 'peso', label: '% Peso', type: 'percent', uniqueCount: 0, filterable: true, role: 'measure' },
-    { key: 'varUsd', label: '% Var. interanual USD', type: 'percent', uniqueCount: 0, filterable: true, role: 'measure' },
-    { key: 'unidAnt', label: 'Ventas Unid. año anterior', type: 'number', uniqueCount: 0, filterable: true, role: 'measure' },
-    { key: 'unid', label: 'Ventas Unid. año actual', type: 'number', uniqueCount: 0, filterable: true, role: 'measure' },
-    { key: 'varUnd', label: '% Var. interanual Und', type: 'percent', uniqueCount: 0, filterable: true, role: 'measure' },
-  ];
+  const tipoRows  = mapCategoriaRows(tipoRaw);
+  const lineaRows = mapCategoriaRows(lineaRaw);
 
   return (
-    <div className="space-y-4">
-      <div className="grid md:grid-cols-2 gap-4">
-        <Card>
-          <CardHeader title="Mix por categoría" subtitle="Distribución de ventas USD año 2026" />
-          <D3DonutChart data={donut} format={(n) => fmtCurrency(n, { short: true })} />
-        </Card>
-        <Card>
-          <CardHeader title="Ranking categorías por USD" />
-          <D3HorizontalBarChart data={bar} format={(n) => fmtCurrency(n, { short: true })} color="#01205e" />
-        </Card>
-      </div>
-      <Card>
-        <CardHeader title="Detalle de categorías" />
-        <Table columns={cols} rows={catRowsWithUnidAnt} pageSize={12} dense />
-      </Card>
+    <div className="space-y-6">
+      <CategoriaBlock
+        title="Tipo de producto · Medicinas / Misceláneos"
+        subtitle={`${tipoRows.length} categorías · cierre ${pdfReference.period}`}
+        rows={tipoRows}
+        donutTitle="Mix % por tipo"
+        donutSubtitle="Medicinas vs Misceláneos · ventas USD año actual"
+      />
+      <CategoriaBlock
+        title="Línea comercial"
+        subtitle={`${lineaRows.length} líneas · cierre ${pdfReference.period}`}
+        rows={lineaRows}
+        donutTitle="Mix % por línea"
+        donutSubtitle="Líneas comerciales · ventas USD año actual"
+      />
     </div>
   );
 }
