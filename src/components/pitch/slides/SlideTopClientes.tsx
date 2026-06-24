@@ -2,22 +2,34 @@ import { useMemo } from 'react';
 import { SlideShell, Insight, Action, SourceBadge } from '../SlideShell';
 import { D3HorizontalBarChart } from '@/components/charts/D3HorizontalBarChart';
 import { workbookData, findSheet, findColumn } from '@/lib/data-inference';
-import { groupSum } from '@/lib/filters';
 import { filterAggregates } from '@/lib/aggregates';
 import { fmtCurrency, fmtNumber, fmtPercent } from '@/lib/format';
 
 function resolveClientes() {
   const sheet = findSheet(/cliente/i);
   if (!sheet) return null;
-  const dim = findColumn(sheet, /(cliente|razon)/i)
-    ?? sheet.columns.find((c) => c.role === 'dimension');
-  const meas = findColumn(sheet, /(venta|valor|monto|total|actual)/i)
-    ?? sheet.columns.find((c) => c.role === 'measure');
-  if (!dim || !meas) return null;
-  const grouped = filterAggregates(groupSum(sheet.rows, dim.key, meas.key))
+  const domains = workbookData.domains as { clients?: { individual?: Record<string, unknown>[] } } | undefined;
+  const colCliente = findColumn(sheet, /^cliente$/i) ?? sheet.columns.find((c) => c.role === 'dimension');
+  const colActual = findColumn(sheet, /val.*2026/i) ?? findColumn(sheet, /2026/i);
+  const colAnterior = findColumn(sheet, /val.*2025/i) ?? findColumn(sheet, /2025/i);
+  const colCreci = findColumn(sheet, /creci/i);
+  if (!colCliente || !colActual) return null;
+
+  const rows = domains?.clients?.individual?.length ? domains.clients.individual : sheet.rows;
+  const raw = rows.map((r) => ({
+    key: String(r.cliente ?? r[colCliente!.key] ?? '').trim(),
+    value: Number(r.val_2026 ?? r[colActual!.key]) || 0,
+    valuePrev: colAnterior ? (Number(r.val_2025 ?? r[colAnterior.key]) || 0) : undefined,
+    _growth: Number(r.creci_vs_ano_anterior ?? (colCreci ? r[colCreci.key] : 0)) || 0,
+  }));
+
+  const sorted = filterAggregates(raw)
     .filter((d) => d.value > 0)
-    .slice(0, 12);
-  return grouped.length >= 3 ? grouped : null;
+    .sort((a, b) => b._growth - a._growth)
+    .slice(0, 10);
+
+  if (sorted.length < 3) return null;
+  return sorted.map(({ _growth: _, ...rest }) => rest);
 }
 
 export function SlideTopClientes() {
@@ -36,11 +48,11 @@ export function SlideTopClientes() {
     >
       <div className="pitch-grid-2">
         <div className="pitch-panel" data-reveal>
-          <h3>Top {data?.length ?? 12} clientes · {real ? `Total ${fmtCurrency(total, { short: true })}` : 'Muestra'}</h3>
+          <h3>Top {data?.length ?? 10} clientes por crecimiento · {real ? `Total 2026: ${fmtCurrency(total, { short: true })}` : 'Muestra'}</h3>
           <p>El ranking permite identificar concentración y riesgo de cartera.</p>
           <div className="mt-4">
             {data ? (
-              <D3HorizontalBarChart data={data} format={(n) => fmtCurrency(n, { short: true })} color="#12A8E0" />
+              <D3HorizontalBarChart data={data} format={(n) => fmtCurrency(n, { short: true })} color="#12A8E0" labelPrev="2025" labelCurr="2026" />
             ) : (
               <D3HorizontalBarChart
                 data={[

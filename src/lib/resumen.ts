@@ -41,7 +41,7 @@ export function getResumenMensual(): ResumenMensual | null {
   const valueRows = headerIdx >= 0 ? sheet.rows.slice(headerIdx + 1) : [];
 
   const current = (rows: Record<string, unknown>[]) => {
-    const months = rows.filter((r) => isMonth(r.mes) && typeof r.ano_2026 === 'number');
+    const months = rows.filter((r) => isMonth(r.mes) && typeof r.ano_2026 === 'number' && r.ano_2026 > 0);
     return months.length ? months[months.length - 1] : null;
   };
 
@@ -59,8 +59,8 @@ export function getResumenMensual(): ResumenMensual | null {
       y2025: num(vRow, 'ano_2025'),
       y2026: num(vRow, 'ano_2026'),
       growth: num(vRow, 'crecimiento'),
-      quota: num(vRow, 'cobertura'),
-      coverage: num(vRow, 'col_7'),
+      quota: num(vRow, 'cuota_2026'),
+      coverage: num(vRow, 'cobertura'),
     },
     units: {
       y2025: num(uRow, 'ano_2025'),

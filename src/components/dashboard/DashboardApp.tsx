@@ -16,6 +16,8 @@ import { D3Heatmap } from '@/components/charts/D3Heatmap';
 import { fmtCurrency, fmtNumber, fmtPercent, fmtDelta } from '@/lib/format';
 import { workbookData, findSheet, findColumn, type ColumnSpec } from '@/lib/data-inference';
 import { groupSum, sumBy } from '@/lib/filters';
+import { filterAggregates } from '@/lib/aggregates';
+import { getDetailRowsOnly } from '@/lib/helpers';
 import { pdfReference } from '@/data/pdf-reference';
 import { getResumenMensual, getCxcTotal } from '@/lib/resumen';
 import { BadgeDollarSign, Boxes, Coins, Eye, PackageCheck, Target, TrendingDown, TrendingUp, Users } from 'lucide-react';
@@ -48,6 +50,20 @@ function tone(n: number): 'positive' | 'alert' | 'neutral' {
   if (n > 0.01) return 'positive';
   if (n < -0.01) return 'alert';
   return 'neutral';
+}
+
+const domains = workbookData.domains as
+  | {
+      providers?: { byValue?: Record<string, unknown>[]; byUnits?: Record<string, unknown>[] };
+      categories?: { byProductType?: Record<string, unknown>[]; byCommercialLine?: Record<string, unknown>[] };
+      clients?: { individual?: Record<string, unknown>[]; groups?: Record<string, unknown>[] };
+      accountsReceivable?: { byClient?: Record<string, unknown>[]; summary?: Record<string, unknown> };
+    }
+  | undefined;
+
+function cleanPrice(value: unknown): number | null {
+  const n = Number(value);
+  return Number.isFinite(n) && n > 0 ? n : null;
 }
 
 // ---------- Resumen ----------
@@ -431,8 +447,11 @@ function ProveedoresSection() {
   const sheet = findSheet(/proveedor|laboratorio/i);
   if (!sheet) return <Card><CardHeader title="Proveedores / Laboratorios" /><p className="text-sm text-slate-500">No se detectó hoja específica de proveedores.</p></Card>;
 
-  // Block A: proveedor ranking by USD (left half of sheet)
-  const byVal = sheet.rows
+  const providerValueRows = domains?.providers?.byValue?.length ? domains.providers.byValue : sheet.rows;
+  const providerUnitRows = domains?.providers?.byUnits?.length ? domains.providers.byUnits : sheet.rows;
+
+  // Block A: proveedor ranking by USD (left half of sheet / domains.providers.byValue)
+  const byVal = providerValueRows
     .filter((r) => r.proveedor && String(r.proveedor).toUpperCase() !== 'TOTAL')
     .map((r) => ({
       proveedor: String(r.proveedor).trim(),
@@ -442,22 +461,24 @@ function ProveedoresSection() {
       varUsd: Number(r.var_interanual_usd) || 0,
       unid: Number(r.ventas_unid_ano_actual) || 0,
       varUnd: Number(r.var_interanual_und) || 0,
-      precio: Number(r.precio_promedio) || 0,
+      precio: cleanPrice(r.precio_promedio),
     }))
     .filter((r) => r.actual > 0)
     .sort((a, b) => b.actual - a.actual);
 
-  // Block B: laboratorio ranking by unidades (right half: proveedor_2)
-  const byUnits = sheet.rows
-    .filter((r) => r.proveedor_2 && String(r.proveedor_2).toUpperCase() !== 'TOTAL')
+  // Block B: laboratorio ranking by unidades (right half / domains.providers.byUnits)
+  const byUnits = providerUnitRows
+    .filter((r) => (r.proveedor || r.proveedor_2) && String(r.proveedor ?? r.proveedor_2).toUpperCase() !== 'TOTAL')
     .map((r) => ({
-      proveedor: String(r.proveedor_2).trim(),
-      actual: Number(r.ventas_ano_actual_2) || 0,
-      unid: Number(r.ventas_unid_ano_actual_2) || 0,
-      peso: Number(r.peso_2) || 0,
-      varUsd: Number(r.var_interanual_usd_2) || 0,
-      varUnd: Number(r.var_interanual_und_2) || 0,
-      precio: Number(r.precio_promedio_2) || 0,
+      proveedor: String(r.proveedor ?? r.proveedor_2).trim(),
+      actual: Number(r.ventas_ano_actual ?? r.ventas_ano_actual_2) || 0,
+      anterior: Number(r.ventas_ano_anterior ?? r.ventas_ano_anterior_2) || 0,
+      unid: Number(r.ventas_unid_ano_actual ?? r.ventas_unid_ano_actual_2) || 0,
+      unidAnt: Number(r.ventas_unid_ano_anterior ?? r.ventas_unid_ano_anterior_2) || 0,
+      peso: Number(r.peso ?? r.peso_2) || 0,
+      varUsd: Number(r.var_interanual_usd ?? r.var_interanual_usd_2) || 0,
+      varUnd: Number(r.var_interanual_und ?? r.var_interanual_und_2) || 0,
+      precio: cleanPrice(r.precio_promedio ?? r.precio_promedio_2),
     }))
     .filter((r) => r.unid > 0)
     .sort((a, b) => b.unid - a.unid);
@@ -477,8 +498,8 @@ function ProveedoresSection() {
     const orig = sheet.rows.find((x) => String(x.proveedor_2).trim() === r.proveedor);
     return {
       ...r,
-      anterior: orig ? Number(orig.ventas_ano_anterior_2) || 0 : 0,
-      unidAnt: orig ? Number(orig.ventas_unid_ano_anterior_2) || 0 : 0,
+      anterior: r.anterior || (orig ? Number(orig.ventas_ano_anterior_2) || 0 : 0),
+      unidAnt: r.unidAnt || (orig ? Number(orig.ventas_unid_ano_anterior_2) || 0 : 0),
     };
   });
 
@@ -591,17 +612,6 @@ function CategoriaBlock({
   const totalUnidAnt = rows.reduce((s, r) => s + r.unidAnt, 0);
   const varTotal = totalAnt > 0 ? totalActual / totalAnt - 1 : 0;
   const varUnidTotal = totalUnidAnt > 0 ? totalUnid / totalUnidAnt - 1 : 0;
-  const totalRow = {
-    categoria: 'Total',
-    anterior: totalAnt,
-    actual: totalActual,
-    peso: 1,
-    varUsd: varTotal,
-    unidAnt: totalUnidAnt,
-    unid: totalUnid,
-    varUnd: varUnidTotal,
-  };
-  const rowsWithTotal = [...rows, totalRow];
   const donut = rows.map((r) => ({ key: r.categoria, value: r.actual }));
   const leader = rows[0];
 
@@ -617,16 +627,15 @@ function CategoriaBlock({
         ]} cols={4} />
       </Card>
 
-      <div className="grid md:grid-cols-2 gap-4">
-        <Card>
-          <CardHeader title="Detalle" subtitle="Comparativo año actual vs año anterior · incluye total" />
-          <Table columns={CATEGORIA_COLS} rows={rowsWithTotal} pageSize={rowsWithTotal.length} dense />
-        </Card>
-        <Card>
-          <CardHeader title={donutTitle} subtitle={donutSubtitle} />
-          <D3DonutChart data={donut} format={(n) => fmtCurrency(n, { short: true })} />
-        </Card>
-      </div>
+      <Card>
+        <CardHeader title="Detalle" subtitle="Comparativo año actual vs año anterior · sin fila Total" />
+        <Table columns={CATEGORIA_COLS} rows={rows} pageSize={rows.length} dense />
+      </Card>
+
+      <Card>
+        <CardHeader title={donutTitle} subtitle={donutSubtitle} />
+        <D3DonutChart data={donut} format={(n) => fmtCurrency(n, { short: true })} />
+      </Card>
     </div>
   );
 }
@@ -637,8 +646,8 @@ function CategoriasSection() {
 
   // ponytail: sheet has two stacked blocks separated by a header row where categorias === 'TIPO'
   const splitIdx = sheet.rows.findIndex((r) => String(r.categorias ?? '').trim().toUpperCase() === 'TIPO');
-  const tipoRaw  = splitIdx >= 0 ? sheet.rows.slice(0, splitIdx)  : sheet.rows;
-  const lineaRaw = splitIdx >= 0 ? sheet.rows.slice(splitIdx + 1) : [];
+  const tipoRaw  = domains?.categories?.byProductType?.length ? domains.categories.byProductType : (splitIdx >= 0 ? sheet.rows.slice(0, splitIdx)  : sheet.rows);
+  const lineaRaw = domains?.categories?.byCommercialLine?.length ? domains.categories.byCommercialLine : (splitIdx >= 0 ? sheet.rows.slice(splitIdx + 1) : []);
 
   const tipoRows  = mapCategoriaRows(tipoRaw);
   const lineaRows = mapCategoriaRows(lineaRaw);
@@ -667,19 +676,68 @@ function CategoriasSection() {
 function ClientesSection() {
   const sheet = findSheet(/cliente/i);
   if (!sheet) return <Card><CardHeader title="Clientes" /><p className="text-sm text-slate-500">No se detectó hoja específica de clientes. Usá el explorador.</p></Card>;
-  const dim = findColumn(sheet, /(cliente|razon)/i) || sheet.columns.find((c) => c.role === 'dimension');
-  const meas = findColumn(sheet, /(venta|valor|monto|actual)/i) || sheet.columns.find((c) => c.role === 'measure');
-  if (!dim || !meas) return <Card><CardHeader title="Clientes" /><p className="text-sm text-slate-500">Columnas insuficientes.</p></Card>;
-  const top = groupSum(sheet.rows, dim.key, meas.key).slice(0, 15);
+
+  const colCliente = findColumn(sheet, /^cliente$/i) ?? sheet.columns.find((c) => c.role === 'dimension');
+  const colActual  = findColumn(sheet, /val.*2026/i) ?? findColumn(sheet, /2026/i);
+  const colAnterior = findColumn(sheet, /val.*2025/i) ?? findColumn(sheet, /2025/i);
+  const colCreci   = findColumn(sheet, /creci/i);
+
+  if (!colCliente || !colActual) return <Card><CardHeader title="Clientes" /><p className="text-sm text-slate-500">Columnas insuficientes.</p></Card>;
+
+  const individualRows = domains?.clients?.individual?.length ? domains.clients.individual : sheet.rows;
+  const groupRows = domains?.clients?.groups?.length ? domains.clients.groups : [];
+
+  const raw = individualRows.map((r) => ({
+    key:       String(r.cliente ?? r[colCliente!.key] ?? '').trim(),
+    value:     Number(r.val_2026 ?? r[colActual!.key])   || 0,
+    valuePrev: colAnterior ? (Number(r.val_2025 ?? r[colAnterior.key]) || 0) : undefined,
+    _growth:   Number(r.creci_vs_ano_anterior ?? (colCreci ? r[colCreci.key] : 0)) || 0,
+  }));
+
+  const top = filterAggregates(raw)
+    .filter((d) => d.value > 0)
+    .sort((a, b) => b._growth - a._growth)
+    .slice(0, 10)
+    .map(({ _growth: _, ...rest }) => rest);
+
   return (
     <div className="space-y-4">
       <Card>
-        <CardHeader title="Top clientes" subtitle={`Por ${meas.label}`} />
-        <D3HorizontalBarChart data={top} format={(n) => fmtCurrency(n, { short: true })} color="#12A8E0" />
+        <CardHeader title="Top 10 clientes por crecimiento" subtitle="Val 2026 vs Val 2025 · ordenado por Creci. vs año anterior" />
+        <D3HorizontalBarChart data={top} format={(n) => fmtCurrency(n, { short: true })} color="#12A8E0" labelPrev="2025" labelCurr="2026" />
       </Card>
       <Card>
-        <CardHeader title="Tabla de clientes" />
-        <Table columns={sheet.columns.slice(0, 8)} rows={sheet.rows.slice(0, 50)} pageSize={10} dense />
+        <CardHeader title="Clientes individuales" subtitle="Ranking individual · Val 2026 y crecimiento real" />
+        <Table
+          columns={[
+            { key: 'pos', label: 'Pos', type: 'number', uniqueCount: 0, filterable: false, role: 'measure' },
+            { key: 'codcli', label: 'CODCLI', type: 'category', uniqueCount: 0, filterable: false, role: 'dimension' },
+            { key: 'cliente', label: 'Cliente', type: 'category', uniqueCount: 0, filterable: false, role: 'dimension' },
+            { key: 'val_2025', label: 'Val 2025', type: 'currency', uniqueCount: 0, filterable: true, role: 'measure' },
+            { key: 'val_2026', label: 'Val 2026', type: 'currency', uniqueCount: 0, filterable: true, role: 'measure' },
+            { key: 'creci_vs_ano_anterior', label: 'Creci. vs año anterior', type: 'percent', uniqueCount: 0, filterable: true, role: 'measure' },
+          ]}
+          rows={individualRows}
+          pageSize={10}
+          dense
+          maxHeight="520px"
+        />
+      </Card>
+      <Card>
+        <CardHeader title="Grupos de clientes" subtitle="Ranking separado · no mezclado con clientes individuales" />
+        <Table
+          columns={[
+            { key: 'pos', label: 'Pos', type: 'number', uniqueCount: 0, filterable: false, role: 'measure' },
+            { key: 'name', label: 'Grupo cliente', type: 'category', uniqueCount: 0, filterable: false, role: 'dimension' },
+            { key: 'val_2025', label: 'Val 2025', type: 'currency', uniqueCount: 0, filterable: true, role: 'measure' },
+            { key: 'val_2026', label: 'Val 2026', type: 'currency', uniqueCount: 0, filterable: true, role: 'measure' },
+            { key: 'creci_vs_ano_anterior', label: 'Creci. vs año anterior', type: 'percent', uniqueCount: 0, filterable: true, role: 'measure' },
+          ]}
+          rows={groupRows}
+          pageSize={10}
+          dense
+          maxHeight="520px"
+        />
       </Card>
     </div>
   );
@@ -700,21 +758,24 @@ function CxcSection() {
     { key: 'mayor_a_90_dias', label: '+90 días' },
   ];
 
-  const clientRows = sheet.rows.filter((r) => {
+  const clientRows = (domains?.accountsReceivable?.byClient?.length ? domains.accountsReceivable.byClient : getDetailRowsOnly(sheet.rows).filter((r) => {
     const d = String(r.dias_antiguedad ?? '').toUpperCase().trim();
     return d && d !== 'TOTAL';
-  });
+  }));
+  const cxcSummary = domains?.accountsReceivable?.summary;
 
   const bucketTotals = BUCKETS.map((b) => ({
     key: b.label,
     value: Math.max(0, clientRows.reduce((s, r) => s + (Number(r[b.key]) || 0), 0)),
   }));
   const total = sumBy(clientRows, 'total');
+  const top10Total = Number(cxcSummary?.top10) || topClientsTotal(clientRows, 10);
+  const pesoTop10 = Number(cxcSummary?.pesoTop10) || (total > 0 ? top10Total / total : 0);
 
   const topClients = clientRows
     .map((r) => ({ cliente: String(r.dias_antiguedad), total: Number(r.total) || 0, peso: Number(r.peso) || 0 }))
     .sort((a, b) => b.total - a.total)
-    .slice(0, 12)
+    .slice(0, 10)
     .map((r) => ({ key: r.cliente, value: r.total }));
 
   const cols: ColumnSpec[] = [
@@ -734,9 +795,10 @@ function CxcSection() {
         <KpiGrid items={[
           { label: 'Total cartera', value: fmtCurrency(total, { short: true }) },
           { label: 'Riesgo (+40 días)', value: fmtCurrency(riesgo, { short: true }), caption: fmtPercent(pctRiesgo) + ' del total', tone: pctRiesgo > 0.2 ? 'alert' : 'positive' },
-          { label: 'Clientes', value: String(clientRows.length) },
+          { label: 'Top 10', value: fmtCurrency(top10Total, { short: true }), caption: 'Saldo acumulado top 10' },
+          { label: 'Peso top 10', value: fmtPercent(pesoTop10), caption: 'Participación sobre cartera' },
           { label: 'Top cliente', value: topClients[0]?.key ?? '—', caption: topClients[0] ? fmtCurrency(topClients[0].value, { short: true }) : undefined },
-        ]} cols={4} />
+        ]} cols={5} />
       </Card>
       <div className="grid md:grid-cols-2 gap-4">
         <Card>
@@ -747,16 +809,24 @@ function CxcSection() {
           </p>
         </Card>
         <Card>
-          <CardHeader title="Top 12 clientes por saldo" />
+          <CardHeader title="Top 10 clientes por saldo" />
           <D3HorizontalBarChart data={topClients} format={(n) => fmtCurrency(n, { short: true })} color="#D92929" />
         </Card>
       </div>
       <Card>
-        <CardHeader title="Detalle CxC por cliente" subtitle={`${clientRows.length} filas`} />
-        <Table columns={cols} rows={clientRows} pageSize={15} dense />
+        <CardHeader title="Detalle CxC por cliente" subtitle={`${clientRows.length} clientes · sin Total / Top / Peso Top`} />
+        <Table columns={cols} rows={clientRows} pageSize={15} dense maxHeight="560px" />
       </Card>
     </div>
   );
+}
+
+function topClientsTotal(rows: Record<string, unknown>[], limit: number): number {
+  return rows
+    .map((r) => Number(r.total) || 0)
+    .sort((a, b) => b - a)
+    .slice(0, limit)
+    .reduce((s, n) => s + n, 0);
 }
 
 // ---------- Visitas ----------

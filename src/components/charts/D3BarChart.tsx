@@ -15,7 +15,7 @@ export function D3BarChart({ data, height = 260, format = (n: number) => fmtNumb
       return;
     }
     const w = ref.current!.clientWidth || 480;
-    const margin = { top: 14, right: 14, bottom: 38, left: 50 };
+    const margin = { top: 28, right: 14, bottom: 38, left: 50 };
     const iw = w - margin.left - margin.right;
     const ih = height - margin.top - margin.bottom;
     const g = svg.attr('viewBox', `0 0 ${w} ${height}`).append('g').attr('transform', `translate(${margin.left},${margin.top})`);
@@ -33,27 +33,43 @@ export function D3BarChart({ data, height = 260, format = (n: number) => fmtNumb
     const y = d3.scaleLinear().domain([0, ymax * 1.08]).range([ih, 0]).nice();
 
     g.append('g').attr('transform', `translate(0,${ih})`).call(d3.axisBottom(x).tickSizeOuter(0).tickPadding(8))
-      .call((s) => s.select('.domain').attr('stroke', '#e2e8f0'))
-      .call((s) => s.selectAll('.tick line').attr('stroke', '#e2e8f0'))
-      .selectAll('text').attr('font-size', 10).attr('fill', '#64748b').attr('font-family', 'Geist Mono, monospace').attr('transform', 'rotate(-15)').attr('text-anchor', 'end');
-    g.append('g').call(d3.axisLeft(y).ticks(4).tickFormat((d) => format(Number(d))).tickSize(0).tickPadding(8))
-      .call((s) => s.select('.domain').remove())
-      .selectAll('text').attr('font-size', 10).attr('fill', '#94a3b8').attr('font-family', 'Geist Mono, monospace');
-    g.selectAll('.grid').data(y.ticks(4)).enter().append('line')
-      .attr('x1', 0).attr('x2', iw).attr('y1', (d) => y(d)).attr('y2', (d) => y(d))
-      .attr('stroke', '#eef0f6').attr('stroke-dasharray', '3,4');
+      .call((sel) => sel.select('.domain').remove())
+      .selectAll('text').attr('font-size', 11).attr('fill', '#475569').attr('font-family', 'Geist, sans-serif');
 
-    const hasCompare = data.some((d) => typeof d.compare === 'number');
+    g.append('g').call(d3.axisLeft(y).ticks(5).tickSizeOuter(0).tickFormat((v) => format(Number(v))))
+      .call((sel) => sel.select('.domain').remove())
+      .selectAll('text').attr('font-size', 10).attr('fill', '#94a3b8');
+
+    g.selectAll('.grid').data(y.ticks(5)).enter().append('line')
+      .attr('x1', 0).attr('x2', iw).attr('y1', (d) => y(d)).attr('y2', (d) => y(d))
+      .attr('stroke', '#e2e8f0').attr('stroke-dasharray', '3,3');
+
+    const hasCompare = data.some((d) => d.compare !== undefined);
     const bw = hasCompare ? x.bandwidth() / 2 - 2 : x.bandwidth();
 
-    const bars = g.selectAll('.bar').data(data).enter().append('rect')
+    const bars1 = g.selectAll('.bar1').data(data).enter().append('rect')
       .attr('x', (d) => x(d.key) ?? 0)
       .attr('width', bw)
       .attr('y', ih).attr('height', 0)
       .attr('fill', 'url(#bar-grad-a)').attr('rx', 3);
-    bars.transition().duration(900).delay((_, i) => i * 60).ease(d3.easeCubicOut)
+    bars1.transition().duration(900).delay((_, i) => i * 60).ease(d3.easeCubicOut)
       .attr('y', (d) => y(d.value)).attr('height', (d) => ih - y(d.value));
-    bars.append('title').text((d) => `${d.key}: ${format(d.value)}`);
+    bars1.append('title').text((d) => `${d.key}: ${format(d.value)}`);
+
+    // value labels above bars1
+    g.selectAll('.lbl1').data(data).enter().append('text')
+      .attr('class', 'lbl1')
+      .attr('x', (d) => (x(d.key) ?? 0) + bw / 2)
+      .attr('y', ih)
+      .attr('text-anchor', 'middle')
+      .attr('font-size', 11)
+      .attr('font-family', 'Geist Mono, monospace')
+      .attr('fill', '#01205e')
+      .attr('opacity', 0)
+      .text((d) => ih - y(d.value) >= 20 ? format(d.value) : '')
+      .transition().duration(700).delay((_, i) => i * 60 + 300).ease(d3.easeCubicOut)
+      .attr('y', (d) => y(d.value) - 5)
+      .attr('opacity', 1);
 
     if (hasCompare) {
       const bars2 = g.selectAll('.bar2').data(data).enter().append('rect')
@@ -64,6 +80,21 @@ export function D3BarChart({ data, height = 260, format = (n: number) => fmtNumb
       bars2.transition().duration(900).delay((_, i) => i * 60 + 120).ease(d3.easeCubicOut)
         .attr('y', (d) => y(d.compare ?? 0)).attr('height', (d) => ih - y(d.compare ?? 0));
       bars2.append('title').text((d) => `${d.key}: ${format(d.compare ?? 0)}`);
+
+      // value labels above bars2
+      g.selectAll('.lbl2').data(data).enter().append('text')
+        .attr('class', 'lbl2')
+        .attr('x', (d) => (x(d.key) ?? 0) + x.bandwidth() / 2 + 2 + bw / 2)
+        .attr('y', ih)
+        .attr('text-anchor', 'middle')
+        .attr('font-size', 11)
+        .attr('font-family', 'Geist Mono, monospace')
+        .attr('fill', '#3aa0e6')
+        .attr('opacity', 0)
+        .text((d) => ih - y(d.compare ?? 0) >= 20 ? format(d.compare ?? 0) : '')
+        .transition().duration(700).delay((_, i) => i * 60 + 420).ease(d3.easeCubicOut)
+        .attr('y', (d) => y(d.compare ?? 0) - 5)
+        .attr('opacity', 1);
     }
   }, [data, height, format, colorA, colorB]);
   return <svg ref={ref} className="w-full" style={{ height }} />;

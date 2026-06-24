@@ -46,3 +46,18 @@ export function fmtDelta(n: number | null | undefined) {
   const sign = v > 0 ? '+' : '';
   return `${sign}${nfPct.format(v)}`;
 }
+
+export function fmtLabel(raw: string): string {
+  if (!raw) return raw;
+  return raw
+    .replace(/_/g, ' ')
+    .trim()
+    .split(/\s+/)
+    .map((w) => {
+      if (!w) return '';
+      // ≤4-char all-caps tokens (POS, USD, VS, COD…) stay uppercase
+      if (w.length <= 4 && w === w.toUpperCase() && /^[A-Z]+$/.test(w)) return w;
+      return w[0].toUpperCase() + w.slice(1).toLowerCase();
+    })
+    .join(' ');
+}

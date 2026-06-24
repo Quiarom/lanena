@@ -30,6 +30,7 @@ export interface WorkbookData {
     columnTypeCounts: Record<string, number>;
     candidates: Record<string, string[]>;
   };
+  domains?: Record<string, unknown>;
 }
 
 export type SetFilter = { kind: 'set'; values: Set<string> };

@@ -1,7 +1,7 @@
 import { cn } from '@/lib/cn';
 import { ChevronDown, ChevronUp } from 'lucide-react';
 import { useMemo, useState } from 'react';
-import { fmtByType } from '@/lib/format';
+import { fmtByType, fmtLabel } from '@/lib/format';
 import type { ColumnSpec } from '@/lib/data-inference';
 
 export interface TableProps {
@@ -9,9 +9,10 @@ export interface TableProps {
   rows: Record<string, unknown>[];
   pageSize?: number;
   dense?: boolean;
+  maxHeight?: string;
 }
 
-export function Table({ columns, rows, pageSize = 25, dense = false }: TableProps) {
+export function Table({ columns, rows, pageSize = 25, dense = false, maxHeight }: TableProps) {
   const [sort, setSort] = useState<{ key: string; dir: 'asc' | 'desc' } | null>(null);
   const [page, setPage] = useState(0);
 
@@ -35,11 +36,13 @@ export function Table({ columns, rows, pageSize = 25, dense = false }: TableProp
     setSort((s) => (s?.key === key ? (s.dir === 'asc' ? { key, dir: 'desc' } : null) : { key, dir: 'asc' }));
   }
 
+  const scrollStyle = maxHeight ? { maxHeight, overflowY: 'auto' as const } : undefined;
+
   return (
     <div className="overflow-hidden rounded-lg border border-slate-200 bg-white">
-      <div className="overflow-x-auto">
+      <div className="overflow-x-auto" style={scrollStyle}>
         <table className={cn('w-full text-sm', dense && 'text-xs')}>
-          <thead className="corp-table-head">
+          <thead className={cn('corp-table-head', maxHeight && 'sticky top-0 z-10')}>
             <tr>
               {columns.map((c) => (
                 <th
@@ -51,7 +54,7 @@ export function Table({ columns, rows, pageSize = 25, dense = false }: TableProp
                   )}
                 >
                   <span className="inline-flex items-center gap-1">
-                    {c.label}
+                    {fmtLabel(c.label)}
                     {sort?.key === c.key && (sort.dir === 'asc' ? <ChevronUp size={12} /> : <ChevronDown size={12} />)}
                   </span>
                 </th>
@@ -62,11 +65,20 @@ export function Table({ columns, rows, pageSize = 25, dense = false }: TableProp
             {slice.length === 0 && (
               <tr><td colSpan={columns.length} className="px-3 py-6 text-center text-slate-400">Sin filas</td></tr>
             )}
-            {slice.map((row, i) => (
-              <tr key={i} className={cn('border-t border-slate-100', i % 2 ? 'bg-slate-50/40' : 'bg-white')}>
+            {slice.map((row, ri) => (
+              <tr key={ri} className={cn('border-t border-slate-100', ri % 2 === 0 ? '' : 'bg-slate-50/40')}>
                 {columns.map((c) => (
-                  <td key={c.key} className={cn('px-3 py-1.5 align-top', c.role === 'measure' && 'text-right tabular-nums')}>
-                    {fmtByType(row[c.key], c.type)}
+                  <td
+                    key={c.key}
+                    className={cn(
+                      'px-3 py-1.5 font-mono tabular-nums',
+                      c.role === 'dimension' && 'font-sans font-medium text-slate-800',
+                      c.role === 'measure' && 'text-right text-slate-700',
+                    )}
+                  >
+                    {c.role === 'dimension'
+                      ? String(row[c.key] ?? '—')
+                      : fmtByType(row[c.key], c.type)}
                   </td>
                 ))}
               </tr>
@@ -74,14 +86,23 @@ export function Table({ columns, rows, pageSize = 25, dense = false }: TableProp
           </tbody>
         </table>
       </div>
-      <div className="flex items-center justify-between border-t border-slate-200 bg-slate-50 px-3 py-2 text-xs text-slate-600">
-        <span>{sorted.length.toLocaleString('es')} filas</span>
-        <div className="flex items-center gap-2">
-          <button onClick={() => setPage((p) => Math.max(0, p - 1))} className="rounded border border-slate-300 px-2 py-0.5 hover:bg-white" disabled={safePage === 0}>‹</button>
-          <span>Página {safePage + 1} / {totalPages}</span>
-          <button onClick={() => setPage((p) => Math.min(totalPages - 1, p + 1))} className="rounded border border-slate-300 px-2 py-0.5 hover:bg-white" disabled={safePage >= totalPages - 1}>›</button>
+      {totalPages > 1 && (
+        <div className="flex items-center justify-between px-3 py-2 border-t border-slate-100 text-xs text-slate-500">
+          <span>Pág. {safePage + 1} / {totalPages} · {sorted.length} filas</span>
+          <div className="flex gap-1">
+            <button
+              onClick={() => setPage((p) => Math.max(0, p - 1))}
+              disabled={safePage === 0}
+              className="px-2 py-0.5 rounded border border-slate-300 px-2 disabled:opacity-40"
+            >‹</button>
+            <button
+              onClick={() => setPage((p) => Math.min(totalPages - 1, p + 1))}
+              disabled={safePage === totalPages - 1}
+              className="px-2 py-0.5 rounded border border-slate-300 px-2 disabled:opacity-40"
+            >›</button>
+          </div>
         </div>
-      </div>
+      )}
     </div>
   );
 }
