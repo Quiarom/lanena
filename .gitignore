@@ -1,2 +1,3 @@
 .vercel
 *.xlsx
+node_modules/
