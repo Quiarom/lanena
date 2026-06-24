@@ -55,6 +55,8 @@ function tone(n: number): 'positive' | 'alert' | 'neutral' {
 const domains = workbookData.domains as
   | {
       providers?: { byValue?: Record<string, unknown>[]; byUnits?: Record<string, unknown>[] };
+      national?: { monthly?: Record<string, unknown>[] };
+      regions?: { rows?: Record<string, unknown>[] };
       categories?: { byProductType?: Record<string, unknown>[]; byCommercialLine?: Record<string, unknown>[] };
       clients?: { individual?: Record<string, unknown>[]; groups?: Record<string, unknown>[] };
       accountsReceivable?: { byClient?: Record<string, unknown>[]; summary?: Record<string, unknown> };
@@ -64,6 +66,14 @@ const domains = workbookData.domains as
 function cleanPrice(value: unknown): number | null {
   const n = Number(value);
   return Number.isFinite(n) && n > 0 ? n : null;
+}
+
+function getRegionDomainRows(regSheet?: import('@/lib/data-inference').SheetData | null): Record<string, unknown>[] {
+  if (domains?.regions?.rows?.length) return domains.regions.rows;
+  if (!regSheet) return [];
+  const stopAt = regSheet.rows.findIndex((r) => String(r.region ?? '').toUpperCase().trim() === 'TOTAL');
+  const regSlice = stopAt > 0 ? regSheet.rows.slice(0, stopAt) : regSheet.rows;
+  return regSlice.filter((r) => r.region && Number(r.ventas_ano_actual) > 0);
 }
 
 // ---------- Resumen ----------
@@ -106,12 +116,13 @@ function ResumenSection() {
   ];
 
   const regSheet = findSheet(/^2\. REGIONES/);
-  const regionData = regSheet
-    ? groupSum(regSheet.rows, 'region', 'ventas_ano_actual').map((r) => {
-        const row = regSheet.rows.find((x) => String(x.region) === r.key);
-        const prev = row ? Number(row.ventas_ano_anterior) || 0 : 0;
-        return { key: r.key, value: r.value, compare: prev };
-      })
+  const cleanRegionRows = getRegionDomainRows(regSheet);
+  const regionData = cleanRegionRows.length
+    ? cleanRegionRows.map((r) => ({
+        key: String(r.region),
+        value: Number(r.ventas_ano_actual) || 0,
+        compare: Number(r.ventas_ano_anterior) || 0,
+      }))
     : pdfReference.regiones.map((r) => ({ key: r.region, value: r.ventas, compare: r.cuota }));
 
   return (
@@ -126,7 +137,7 @@ function ResumenSection() {
       </Card>
       <div className="grid md:grid-cols-2 gap-4">
         <Card>
-          <CardHeader title="Ventas por región — año actual vs anterior" subtitle="Azul: 2026 (actual) · Celeste: 2025 (anterior)" />
+          <CardHeader title="Ventas por región — año actual vs anterior" subtitle="Celeste: 2025 izquierda · Azul: 2026 derecha" />
           <D3BarChart data={regionData} format={(n) => fmtCurrency(n, { short: true })} />
         </Card>
         <Card>
@@ -147,32 +158,28 @@ function VentasSection() {
   const regSheet = findSheet(/^2\. REGIONES/);
   if (!dist && !regSheet) return <FallbackVentas />;
 
-  // Monthly evolution from DIST sheet (only month rows with numeric ano_2026)
-  const monthRows = dist
-    ? dist.rows.filter((r) => typeof r.mes === 'string' && /^(ene|feb|mar|abr|may|jun|jul|ago|sep|oct|nov|dic)$/i.test(String(r.mes)) && typeof r.ano_2026 === 'number')
-    : [];
+  // Monthly evolution from normalized VALUE rows only. Raw sheet 1 has UNITS and VALUES stacked.
+  const monthRows = (domains?.national?.monthly ?? [])
+    .filter((r) => r.status === 'closed' && typeof r.mes === 'string');
   const monthBar = monthRows.map((r) => ({
     key: String(r.mes).toUpperCase(),
-    value: Number(r.ano_2026) || 0,
-    compare: Number(r.ano_2025) || 0,
+    value: Number(r.y2026) || 0,
+    compare: Number(r.y2025) || 0,
   }));
   const totalVentas2026 = monthBar.reduce((s, r) => s + r.value, 0);
   const totalVentas2025 = monthBar.reduce((s, r) => s + r.compare!, 0);
-  const totalCuota = monthRows.reduce((s, r) => s + (Number(r.cuota_2026) || 0), 0);
+  const totalCuota = monthRows.reduce((s, r) => s + (Number(r.quota2026 ?? r.quota) || 0), 0);
   const cobertura = totalCuota > 0 ? totalVentas2026 / totalCuota : null;
   const growth = totalVentas2025 > 0 ? totalVentas2026 / totalVentas2025 - 1 : 0;
 
   // Region breakdown from sheet 2
-  const regRows = regSheet
-    ? regSheet.rows
-        .filter((r) => r.region && String(r.region).toUpperCase() !== 'TOTAL')
-        .map((r) => ({
-          key: String(r.region),
-          value: Number(r.ventas_ano_actual) || 0,
-          compare: Number(r.ventas_ano_anterior) || 0,
-        }))
-        .sort((a, b) => b.value - a.value)
-    : [];
+  const regRows = getRegionDomainRows(regSheet)
+    .map((r) => ({
+      key: String(r.region),
+      value: Number(r.ventas_ano_actual) || 0,
+      compare: Number(r.ventas_ano_anterior) || 0,
+    }))
+    .sort((a, b) => b.value - a.value);
 
   const items: KpiItem[] = [
     { label: 'Ventas acum. 2026', value: fmtCurrency(totalVentas2026, { short: true }), caption: `vs ${fmtCurrency(totalVentas2025, { short: true })} 2025`, tone: tone(growth), delta: fmtDelta(growth) },
@@ -189,13 +196,13 @@ function VentasSection() {
       </Card>
       {monthBar.length > 0 && (
         <Card>
-          <CardHeader title="Ventas mensuales 2026 vs 2025" subtitle="Azul: 2026 · Celeste: 2025" />
+          <CardHeader title="Ventas mensuales 2026 vs 2025" subtitle="Celeste: 2025 izquierda · Azul: 2026 derecha" />
           <D3BarChart data={monthBar} format={(n) => fmtCurrency(n, { short: true })} />
         </Card>
       )}
       {regRows.length > 0 && (
         <Card>
-          <CardHeader title="Ventas por región — año actual vs anterior" subtitle="Azul: 2026 · Celeste: 2025" />
+          <CardHeader title="Ventas por región — año actual vs anterior" subtitle="Celeste: 2025 izquierda · Azul: 2026 derecha" />
           <D3BarChart data={regRows} format={(n) => fmtCurrency(n, { short: true })} />
         </Card>
       )}
@@ -216,7 +223,7 @@ function FallbackVentas({ note }: { note?: string } = {}) {
         <KpiGrid items={items} cols={4} />
       </Card>
       <Card>
-        <CardHeader title="Ventas vs cuota por región" />
+        <CardHeader title="Ventas vs cuota por región" subtitle="Celeste: cuota izquierda · Azul: ventas derecha" />
         <D3BarChart data={pdfReference.regiones.map((r) => ({ key: r.region, value: r.ventas, compare: r.cuota }))} format={(n) => fmtCurrency(n, { short: true })} />
       </Card>
     </div>
@@ -229,11 +236,7 @@ function RegionesSection() {
   const estSheet = findSheet(/^3\. ESTADOS/);
   if (!regSheet) return <RegionFallback />;
 
-  // Sheet contains a second block (TIPO_CLIENTE/CADENA/INDEPENDIENTE/GRUPO) after first Total — stop there
-  const stopAt = regSheet.rows.findIndex((r) => String(r.region ?? '').toUpperCase().trim() === 'TOTAL');
-  const regSlice = stopAt > 0 ? regSheet.rows.slice(0, stopAt) : regSheet.rows;
-  const regRows = regSlice
-    .filter((r) => r.region && Number(r.ventas_ano_actual) > 0)
+  const regRows = getRegionDomainRows(regSheet)
     .map((r) => ({
       region: String(r.region),
       anterior: Number(r.ventas_ano_anterior) || 0,
@@ -254,18 +257,6 @@ function RegionesSection() {
   const varUnidTotal = totalUnidAnt > 0 ? totalUnid / totalUnidAnt - 1 : 0;
 
   const leaderUnidades = [...regRows].sort((a, b) => b.unid - a.unid)[0];
-
-  const totalRow = {
-    region: 'Total',
-    anterior: totalAnt,
-    actual: totalActual,
-    peso: 1,
-    varUsd: varTotal,
-    unidAnt: totalUnidAnt,
-    unid: totalUnid,
-    varUnd: varUnidTotal,
-  };
-  const regRowsWithTotal = [...regRows, totalRow];
 
   const regCols: ColumnSpec[] = [
     { key: 'region', label: 'Región', type: 'category', uniqueCount: 0, filterable: false, role: 'dimension' },
@@ -292,7 +283,7 @@ function RegionesSection() {
 
       <Card>
         <CardHeader title="Detalle por región" subtitle="Comparativo anterior vs actual · USD y unidades" />
-        <Table columns={regCols} rows={regRowsWithTotal} pageSize={regRowsWithTotal.length} dense />
+        <Table columns={regCols} rows={regRows} pageSize={regRows.length} dense />
       </Card>
 
       {estSheet && <EstadosCard sheet={estSheet} />}
@@ -594,14 +585,10 @@ function CategoriaBlock({
   title,
   subtitle,
   rows,
-  donutTitle,
-  donutSubtitle,
 }: {
   title: string;
   subtitle: string;
   rows: ReturnType<typeof mapCategoriaRows>;
-  donutTitle: string;
-  donutSubtitle: string;
 }) {
   if (rows.length === 0) {
     return <Card><CardHeader title={title} subtitle={subtitle} /><p className="text-sm text-slate-500">No hay filas para este criterio.</p></Card>;
@@ -612,7 +599,6 @@ function CategoriaBlock({
   const totalUnidAnt = rows.reduce((s, r) => s + r.unidAnt, 0);
   const varTotal = totalAnt > 0 ? totalActual / totalAnt - 1 : 0;
   const varUnidTotal = totalUnidAnt > 0 ? totalUnid / totalUnidAnt - 1 : 0;
-  const donut = rows.map((r) => ({ key: r.categoria, value: r.actual }));
   const leader = rows[0];
 
   return (
@@ -632,11 +618,25 @@ function CategoriaBlock({
         <Table columns={CATEGORIA_COLS} rows={rows} pageSize={rows.length} dense />
       </Card>
 
-      <Card>
-        <CardHeader title={donutTitle} subtitle={donutSubtitle} />
-        <D3DonutChart data={donut} format={(n) => fmtCurrency(n, { short: true })} />
-      </Card>
     </div>
+  );
+}
+
+function CategoriaMixCard({
+  title,
+  subtitle,
+  rows,
+}: {
+  title: string;
+  subtitle: string;
+  rows: ReturnType<typeof mapCategoriaRows>;
+}) {
+  const donut = rows.map((r) => ({ key: r.categoria, value: r.actual }));
+  return (
+    <Card>
+      <CardHeader title={title} subtitle={subtitle} />
+      <D3DonutChart data={donut} format={(n) => fmtCurrency(n, { short: true })} />
+    </Card>
   );
 }
 
@@ -658,16 +658,24 @@ function CategoriasSection() {
         title="Tipo de producto · Medicinas / Misceláneos"
         subtitle={`${tipoRows.length} categorías · cierre ${pdfReference.period}`}
         rows={tipoRows}
-        donutTitle="Mix % por tipo"
-        donutSubtitle="Medicinas vs Misceláneos · ventas USD año actual"
       />
       <CategoriaBlock
         title="Línea comercial"
         subtitle={`${lineaRows.length} líneas · cierre ${pdfReference.period}`}
         rows={lineaRows}
-        donutTitle="Mix % por línea"
-        donutSubtitle="Líneas comerciales · ventas USD año actual"
       />
+      <div className="grid gap-4 lg:grid-cols-2">
+        <CategoriaMixCard
+          title="Mix % por tipo"
+          subtitle="Medicinas vs Misceláneos · ventas USD año actual"
+          rows={tipoRows}
+        />
+        <CategoriaMixCard
+          title="Mix % por línea"
+          subtitle="Líneas comerciales · ventas USD año actual"
+          rows={lineaRows}
+        />
+      </div>
     </div>
   );
 }
@@ -688,6 +696,7 @@ function ClientesSection() {
   const groupRows = domains?.clients?.groups?.length ? domains.clients.groups : [];
 
   const raw = individualRows.map((r) => ({
+    pos:       Number(r.pos) || null,
     key:       String(r.cliente ?? r[colCliente!.key] ?? '').trim(),
     value:     Number(r.val_2026 ?? r[colActual!.key])   || 0,
     valuePrev: colAnterior ? (Number(r.val_2025 ?? r[colAnterior.key]) || 0) : undefined,
@@ -696,14 +705,14 @@ function ClientesSection() {
 
   const top = filterAggregates(raw)
     .filter((d) => d.value > 0)
-    .sort((a, b) => b._growth - a._growth)
+    .sort((a, b) => (a.pos ?? Infinity) - (b.pos ?? Infinity))
     .slice(0, 10)
-    .map(({ _growth: _, ...rest }) => rest);
+    .map(({ _growth: _, pos: __, ...rest }) => rest);
 
   return (
     <div className="space-y-4">
       <Card>
-        <CardHeader title="Top 10 clientes por crecimiento" subtitle="Val 2026 vs Val 2025 · ordenado por Creci. vs año anterior" />
+        <CardHeader title="Top 10 clientes" subtitle="Barras horizontales comparativas · Val 2025 vs Val 2026 · ordenado por POS" />
         <D3HorizontalBarChart data={top} format={(n) => fmtCurrency(n, { short: true })} color="#12A8E0" labelPrev="2025" labelCurr="2026" />
       </Card>
       <Card>
@@ -766,7 +775,7 @@ function CxcSection() {
 
   const bucketTotals = BUCKETS.map((b) => ({
     key: b.label,
-    value: Math.max(0, clientRows.reduce((s, r) => s + (Number(r[b.key]) || 0), 0)),
+    value: clientRows.reduce((s, r) => s + Math.max(0, Number(r[b.key]) || 0), 0),
   }));
   const total = sumBy(clientRows, 'total');
   const top10Total = Number(cxcSummary?.top10) || topClientsTotal(clientRows, 10);
@@ -802,11 +811,8 @@ function CxcSection() {
       </Card>
       <div className="grid md:grid-cols-2 gap-4">
         <Card>
-          <CardHeader title="Distribución por tramo de antigüedad" />
+          <CardHeader title="Distribución por tramo de antigüedad" subtitle="Valores positivos por tramo · notas de crédito quedan en detalle" />
           <D3DonutChart data={bucketTotals} format={(n) => fmtCurrency(n, { short: true })} />
-          <p className="mt-3 text-xs text-amber-700 bg-amber-50 border border-amber-200 rounded p-2">
-            Tramos +40 días concentran {fmtPercent(pctRiesgo)} de la cartera. Recomendación: cruce con visitas y ventas del cliente.
-          </p>
         </Card>
         <Card>
           <CardHeader title="Top 10 clientes por saldo" />

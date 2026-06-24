@@ -277,12 +277,21 @@ function normalizeDomains(sheets, sourceFile) {
   }
 
   // --- national ---
-  const buildMonthlyRow = (rows) =>
+  const buildMonthlyRow = (rows, mode = 'units') =>
     MONTH_KEYS.map((mes) => {
       const r = rows.find((x) => x.mes === mes);
       const y2026 = r ? (typeof r.ano_2026 === 'number' ? r.ano_2026 : null) : null;
       const y2025 = r ? (typeof r.ano_2025 === 'number' ? r.ano_2025 : null) : null;
       const isClosed = y2026 !== null && y2026 > 0;
+      const avgPrice = mode === 'values' && r && typeof r.cuota_2026 === 'number' ? r.cuota_2026 : null;
+      const quota2026 = r
+        ? (mode === 'values'
+          ? (typeof r.cobertura === 'number' ? r.cobertura : 0)
+          : (typeof r.cuota_2026 === 'number' ? r.cuota_2026 : 0))
+        : 0;
+      const coveragePct = isClosed && quota2026 > 0
+        ? y2026 / quota2026
+        : (r && typeof r.cobertura === 'number' && mode !== 'values' ? r.cobertura : null);
       const growthPct = isClosed && y2025 && y2025 !== 0
         ? (y2026 - y2025) / y2025
         : null;
@@ -294,8 +303,11 @@ function normalizeDomains(sheets, sourceFile) {
         y2025: y2025 ?? 0,
         y2026: y2026 ?? 0,
         growthPct,
-        quota: r ? (typeof r.cuota_2026 === 'number' ? r.cuota_2026 : 0) : 0,
-        coverage: r ? (typeof r.cobertura === 'number' ? r.cobertura : 0) : 0,
+        avgPrice,
+        quota2026,
+        coveragePct,
+        quota: quota2026,
+        coverage: coveragePct,
         status: isClosed ? 'closed' : 'pending',
       };
     });
@@ -304,8 +316,8 @@ function normalizeDomains(sheets, sourceFile) {
   const uAccum = unitRows.find((r) => typeof r.mes === 'string' && String(r.mes).startsWith('Acum'));
 
   domains.national = {
-    monthly: buildMonthlyRow(valueRows),
-    monthlyUnits: buildMonthlyRow(unitRows),
+    monthly: buildMonthlyRow(valueRows, 'values'),
+    monthlyUnits: buildMonthlyRow(unitRows, 'units'),
     accumulated: {
       y2025: vAccum && typeof vAccum.ano_2025 === 'number' ? vAccum.ano_2025 : 0,
       y2026: vAccum && typeof vAccum.ano_2026 === 'number' ? vAccum.ano_2026 : 0,
@@ -439,8 +451,8 @@ function normalizeDomains(sheets, sourceFile) {
       }
     }
     domains.clients = {
-      individual: individual.sort((a, b) => (b.creci_vs_ano_anterior ?? -Infinity) - (a.creci_vs_ano_anterior ?? -Infinity)),
-      groups: groups.sort((a, b) => (b.val_2026 ?? 0) - (a.val_2026 ?? 0)),
+      individual: individual.sort((a, b) => (Number(a.pos) || Infinity) - (Number(b.pos) || Infinity)),
+      groups: groups.sort((a, b) => (Number(a.pos) || Infinity) - (Number(b.pos) || Infinity)),
     };
   }
 

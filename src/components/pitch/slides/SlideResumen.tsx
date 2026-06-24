@@ -36,7 +36,6 @@ export function SlideResumen() {
     <SlideShell
       num="01"
       eyebrow="Cierre comercial · Mayo 2026"
-      title="Cerramos Mayo debajo de la cuota. Hay decision para tomar esta semana."
       right={<SourceBadge label="Datos del cierre" />}
     >
       <KpiRow items={items} />

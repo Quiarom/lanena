@@ -8,7 +8,6 @@ import { SlideTopClientes } from './slides/SlideTopClientes';
 import { SlideCxC } from './slides/SlideCxC';
 import { SlideVisitas } from './slides/SlideVisitas';
 import { SlideCobranza } from './slides/SlideCobranza';
-import { SlideAccionables } from './slides/SlideAccionables';
 
 export interface SlideMeta { id: string; num: string; label: string }
 
@@ -22,7 +21,6 @@ export const SLIDES: SlideMeta[] = [
   { id: 'cxc',         num: '07', label: 'Cuentas por cobrar' },
   { id: 'visitas',     num: '08', label: 'Visitas' },
   { id: 'cobranza',    num: '09', label: 'Tendencia cobranza' },
-  { id: 'accionables', num: '10', label: 'Accionables' },
 ];
 
 async function exportPDF() {
@@ -170,7 +168,6 @@ export default function PitchApp() {
         <div id="lamina-cxc" data-pitch-slide="cxc"><SlideCxC /></div>
         <div id="lamina-visitas" data-pitch-slide="visitas"><SlideVisitas /></div>
         <div id="lamina-cobranza" data-pitch-slide="cobranza"><SlideCobranza /></div>
-        <div id="lamina-accionables" data-pitch-slide="accionables"><SlideAccionables /></div>
       </div>
 
       <footer className="pitch-foot">

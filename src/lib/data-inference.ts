@@ -40,7 +40,12 @@ export type FilterState = Record<string, SetFilter | RangeFilter | null>;
 export const workbookData = workbook as unknown as WorkbookData;
 
 export function findSheet(re: RegExp): SheetData | null {
-  return workbookData.sheets.find((s) => re.test(s.name.toLowerCase())) || null;
+  return workbookData.sheets.find((s) => {
+    re.lastIndex = 0;
+    if (re.test(s.name)) return true;
+    re.lastIndex = 0;
+    return re.test(s.name.toLowerCase());
+  }) || null;
 }
 export function findColumn(sheet: SheetData, re: RegExp): ColumnSpec | null {
   return sheet.columns.find((c) => re.test(c.label.toLowerCase()) || re.test(c.key)) || null;

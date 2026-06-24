@@ -1,9 +1,9 @@
 import { useMemo } from 'react';
-import { SlideShell, Insight, Action, SourceBadge } from '../SlideShell';
+import { SlideShell, SourceBadge } from '../SlideShell';
 import { D3DonutChart } from '@/components/charts/D3DonutChart';
 import { workbookData, findSheet } from '@/lib/data-inference';
 import { isAggregateLabel } from '@/lib/aggregates';
-import { fmtCurrency, fmtPercent } from '@/lib/format';
+import { fmtCurrency } from '@/lib/format';
 
 const FALLBACK = [
   { key: '0-30 días',     value: 2100000 },
@@ -40,36 +40,16 @@ export function SlideCxC() {
   const { data, total, real } = useMemo(resolveCxc, []);
   const sumTramos = data.reduce((a, b) => a + b.value, 0);
   const displayTotal = total && total > 0 ? total : sumTramos;
-  const mas90 = data.find((d) => d.key === '+90 días')?.value ?? 0;
-  const share90 = displayTotal ? mas90 / displayTotal : 0;
-
   return (
     <SlideShell
       num="07"
       eyebrow="Antigüedad de cartera"
-      title="La deuda mayor a 90 días es la que mas deteriora el capital de trabajo."
       right={<SourceBadge label={real && workbookData.hasRealData ? 'Hoja 7 · CXC' : 'PDF de referencia'} />}
     >
-      <div className="pitch-grid-2">
-        <div className="flex flex-col gap-3">
-          <Insight>
-            La deuda con mas de 90 días representa {fmtCurrency(mas90, { short: true })}
-            ({fmtPercent(share90)} del total). Es la porcion mas riesgosa: clientes con este
-            perfil suelen deteriorarse sin gestion directa del area comercial.
-          </Insight>
-          <Action>
-            Definir un plan de cobranza priorizado para la cartera +90 días: visita comercial
-            del area de credito y cobranza, acuerdos de pago y suspension preventiva de
-            despacho. Meta: reducir el tramo +90 en 40% en 60 días.
-          </Action>
-        </div>
-
-        <div className="pitch-panel" data-reveal>
-          <h3>Antigüedad de CxC · Total {fmtCurrency(displayTotal, { short: true })}</h3>
-          <p>Distribucion por tramo de dias.</p>
-          <div className="mt-4">
-            <D3DonutChart data={data} format={(n) => fmtCurrency(n, { short: true })} size={260} />
-          </div>
+      <div className="pitch-panel" data-reveal>
+        <h3>Antigüedad de CxC · Total {fmtCurrency(displayTotal, { short: true })}</h3>
+        <div className="mt-4">
+          <D3DonutChart data={data} format={(n) => fmtCurrency(n, { short: true })} size={360} />
         </div>
       </div>
     </SlideShell>

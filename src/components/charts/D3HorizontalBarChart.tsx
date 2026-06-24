@@ -108,66 +108,81 @@ export function D3HorizontalBarChart({
     addTracks();
 
     if (hasComparison) {
-      const ySub = d3.scaleBand().domain(['prev', 'curr']).range([0, y.bandwidth()]).padding(0.12);
       const allVals = data.flatMap((d) => [d.value, d.valuePrev ?? 0]);
       const xmax = d3.max(allVals) || 1;
-      const x = d3.scaleLinear().domain([0, xmax]).range([labelWidth, barEnd]);
+      const comparisonGap = 6;
+      const centerX = labelWidth + Math.max(72, (barEnd - labelWidth) * 0.48);
+      const xPrev = d3.scaleLinear().domain([0, xmax]).range([centerX - comparisonGap, labelWidth]);
+      const xCurr = d3.scaleLinear().domain([0, xmax]).range([centerX + comparisonGap, barEnd]);
+      const barHeight = Math.min(16, Math.max(8, y.bandwidth() * 0.44));
+      const barY = (d: HBarDatum) => (y(d.key) ?? 0) + y.bandwidth() / 2 - barHeight / 2;
+      const prevLabelX = (value: number) => Math.max(labelWidth + 8, xPrev(value) - 8);
+      const currLabelX = (value: number) => Math.min(rowWidth - 8, xCurr(value) + 8);
+
+      g.append('line')
+        .attr('x1', centerX)
+        .attr('x2', centerX)
+        .attr('y1', 0)
+        .attr('y2', ih)
+        .attr('stroke', '#cbd5e1')
+        .attr('stroke-dasharray', '3,3');
 
       const prevBars = g.selectAll('rect.bar-prev').data(data).enter().append('rect').attr('class', 'bar-prev')
-        .attr('x', labelWidth)
-        .attr('y', (d) => (y(d.key) ?? 0) + (ySub('prev') ?? 0))
-        .attr('height', ySub.bandwidth())
+        .attr('x', centerX - comparisonGap)
+        .attr('y', barY)
+        .attr('height', barHeight)
         .attr('width', 0)
         .attr('fill', '#94a3b8')
         .attr('rx', 4);
 
       prevBars.transition().duration(900).delay((_, i) => i * 60).ease(d3.easeCubicOut)
-        .attr('width', (d) => Math.max(0, x(d.valuePrev ?? 0) - labelWidth));
+        .attr('x', (d) => xPrev(d.valuePrev ?? 0))
+        .attr('width', (d) => Math.max(0, centerX - comparisonGap - xPrev(d.valuePrev ?? 0)));
       prevBars.append('title').text((d) => `${d.key} ${labelPrev}: ${format(d.valuePrev ?? 0)}`);
 
       const currBars = g.selectAll('rect.bar-curr').data(data).enter().append('rect').attr('class', 'bar-curr')
-        .attr('x', labelWidth)
-        .attr('y', (d) => (y(d.key) ?? 0) + (ySub('curr') ?? 0))
-        .attr('height', ySub.bandwidth())
+        .attr('x', centerX + comparisonGap)
+        .attr('y', barY)
+        .attr('height', barHeight)
         .attr('width', 0)
         .attr('fill', `url(#${gid})`)
         .attr('rx', 4);
 
       currBars.transition().duration(900).delay((_, i) => i * 60 + 150).ease(d3.easeCubicOut)
-        .attr('width', (d) => Math.max(0, x(d.value) - labelWidth));
+        .attr('width', (d) => Math.max(0, xCurr(d.value) - centerX - comparisonGap));
       currBars.append('title').text((d) => `${d.key} ${labelCurr}: ${format(d.value)}`);
 
       g.selectAll('.lbl-prev').data(data).enter().append('text')
-        .attr('y', (d) => (y(d.key) ?? 0) + (ySub('prev') ?? 0) + ySub.bandwidth() / 2 + 4)
+        .attr('y', (d) => (y(d.key) ?? 0) + y.bandwidth() / 2 + 4)
         .attr('font-size', 10)
         .attr('fill', '#64748b')
         .attr('font-family', 'Geist Mono, monospace')
         .attr('opacity', 0)
+        .attr('text-anchor', 'end')
         .text((d) => format(d.valuePrev ?? 0))
-        .attr('x', labelWidth + 6)
+        .attr('x', centerX - comparisonGap - 6)
         .transition().duration(700).delay((_, i) => i * 60 + 320).ease(d3.easeCubicOut)
-        .attr('x', (d) => labelX(x(d.valuePrev ?? 0)))
-        .attr('text-anchor', (d) => labelAnchor(x(d.valuePrev ?? 0)))
+        .attr('x', (d) => prevLabelX(d.valuePrev ?? 0))
         .attr('opacity', 1);
 
       g.selectAll('.lbl-curr').data(data).enter().append('text')
-        .attr('y', (d) => (y(d.key) ?? 0) + (ySub('curr') ?? 0) + ySub.bandwidth() / 2 + 4)
+        .attr('y', (d) => (y(d.key) ?? 0) + y.bandwidth() / 2 + 4)
         .attr('font-size', 10)
         .attr('fill', '#01205e')
         .attr('font-family', 'Geist Mono, monospace')
         .attr('opacity', 0)
+        .attr('text-anchor', 'start')
         .text((d) => format(d.value))
-        .attr('x', labelWidth + 6)
+        .attr('x', centerX + comparisonGap + 6)
         .transition().duration(700).delay((_, i) => i * 60 + 470).ease(d3.easeCubicOut)
-        .attr('x', (d) => labelX(x(d.value)))
-        .attr('text-anchor', (d) => labelAnchor(x(d.value)))
+        .attr('x', (d) => currLabelX(d.value))
         .attr('opacity', 1);
 
       const lg = svg.append('g').attr('transform', `translate(${margin.left}, ${h - 16})`);
       lg.append('rect').attr('width', 10).attr('height', 10).attr('rx', 2).attr('fill', '#94a3b8');
-      lg.append('text').attr('x', 14).attr('y', 9).attr('font-size', 10).attr('fill', '#64748b').attr('font-family', 'Geist, sans-serif').text(labelPrev);
-      lg.append('rect').attr('x', 55).attr('width', 10).attr('height', 10).attr('rx', 2).attr('fill', color);
-      lg.append('text').attr('x', 69).attr('y', 9).attr('font-size', 10).attr('fill', '#01205e').attr('font-family', 'Geist, sans-serif').text(labelCurr);
+      lg.append('text').attr('x', 14).attr('y', 9).attr('font-size', 10).attr('fill', '#64748b').attr('font-family', 'Geist, sans-serif').text(`${labelPrev} izquierda`);
+      lg.append('rect').attr('x', 105).attr('width', 10).attr('height', 10).attr('rx', 2).attr('fill', color);
+      lg.append('text').attr('x', 119).attr('y', 9).attr('font-size', 10).attr('fill', '#01205e').attr('font-family', 'Geist, sans-serif').text(`${labelCurr} derecha`);
     } else {
       const xmax = d3.max(data, (d) => d.value) || 1;
       const x = d3.scaleLinear().domain([0, xmax]).range([labelWidth, barEnd]);

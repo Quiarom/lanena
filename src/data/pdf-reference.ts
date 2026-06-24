@@ -26,18 +26,20 @@ export const pdfReference = {
     visitasComerciales: 22000,
   },
   regiones: [
-    { region: 'CENTRO ESTE',  ventas: 9842000, cuota: 11200000 },
-    { region: 'CENTRO OESTE', ventas: 6105000, cuota: 7000000 },
-    { region: 'OCCIDENTE',    ventas: 5210000, cuota: 6100000 },
-    { region: 'ORIENTE',      ventas: 3990000, cuota: 4500000 },
-    { region: 'LOS ANDES',    ventas: 2840000, cuota: 3284700 },
+    { region: 'CENTRO ESTE',  ventas: 34095258.36, cuota: 24412867.08 },
+    { region: 'CENTRO OESTE', ventas: 31478285.46, cuota: 24743712.03 },
+    { region: 'MARACAIBO',    ventas: 24911266.31, cuota: 20774376.12 },
+    { region: 'ANDINA',       ventas: 24652567.75, cuota: 15425004.32 },
+    { region: 'CARACAS',      ventas: 24583794.30, cuota: 16995343.90 },
+    { region: 'ESTE',         ventas: 23864947.18, cuota: 16825648.08 },
   ],
   visitasPorRegion: [
     { region: 'CENTRO ESTE',  visitas: 6800, objetivo: 7500 },
     { region: 'CENTRO OESTE', visitas: 4900, objetivo: 5500 },
-    { region: 'OCCIDENTE',    visitas: 4300, objetivo: 4800 },
-    { region: 'ORIENTE',      visitas: 3100, objetivo: 3500 },
-    { region: 'LOS ANDES',    visitas: 2900, objetivo: 3200 },
+    { region: 'MARACAIBO',    visitas: 4300, objetivo: 4800 },
+    { region: 'ANDINA',       visitas: 2900, objetivo: 3200 },
+    { region: 'CARACAS',      visitas: 3100, objetivo: 3500 },
+    { region: 'ESTE',         visitas: 3000, objetivo: 3400 },
   ],
 } as const;
 

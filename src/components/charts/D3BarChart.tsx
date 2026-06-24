@@ -48,7 +48,7 @@ export function D3BarChart({ data, height = 260, format = (n: number) => fmtNumb
     const bw = hasCompare ? x.bandwidth() / 2 - 2 : x.bandwidth();
 
     const bars1 = g.selectAll('.bar1').data(data).enter().append('rect')
-      .attr('x', (d) => x(d.key) ?? 0)
+      .attr('x', (d) => (x(d.key) ?? 0) + (hasCompare ? x.bandwidth() / 2 + 2 : 0))
       .attr('width', bw)
       .attr('y', ih).attr('height', 0)
       .attr('fill', 'url(#bar-grad-a)').attr('rx', 3);
@@ -59,7 +59,7 @@ export function D3BarChart({ data, height = 260, format = (n: number) => fmtNumb
     // value labels above bars1
     g.selectAll('.lbl1').data(data).enter().append('text')
       .attr('class', 'lbl1')
-      .attr('x', (d) => (x(d.key) ?? 0) + bw / 2)
+      .attr('x', (d) => (x(d.key) ?? 0) + (hasCompare ? x.bandwidth() / 2 + 2 : 0) + bw / 2)
       .attr('y', ih)
       .attr('text-anchor', 'middle')
       .attr('font-size', 11)
@@ -73,7 +73,7 @@ export function D3BarChart({ data, height = 260, format = (n: number) => fmtNumb
 
     if (hasCompare) {
       const bars2 = g.selectAll('.bar2').data(data).enter().append('rect')
-        .attr('x', (d) => (x(d.key) ?? 0) + x.bandwidth() / 2 + 2)
+        .attr('x', (d) => x(d.key) ?? 0)
         .attr('width', bw)
         .attr('y', ih).attr('height', 0)
         .attr('fill', 'url(#bar-grad-b)').attr('rx', 3);
@@ -84,7 +84,7 @@ export function D3BarChart({ data, height = 260, format = (n: number) => fmtNumb
       // value labels above bars2
       g.selectAll('.lbl2').data(data).enter().append('text')
         .attr('class', 'lbl2')
-        .attr('x', (d) => (x(d.key) ?? 0) + x.bandwidth() / 2 + 2 + bw / 2)
+        .attr('x', (d) => (x(d.key) ?? 0) + bw / 2)
         .attr('y', ih)
         .attr('text-anchor', 'middle')
         .attr('font-size', 11)

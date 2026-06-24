@@ -3,7 +3,7 @@ import type { ReactNode } from 'react';
 export interface SlideShellProps {
   num: string;
   eyebrow: string;
-  title: string;
+  title?: string;
   right?: ReactNode;
   children: ReactNode;
 }
@@ -14,7 +14,7 @@ export function SlideShell({ num, eyebrow, title, right, children }: SlideShellP
       <header className="pitch-lamina__head">
         <div>
           <span className="pitch-lamina__num"><i>{num}</i> {eyebrow}</span>
-          <h2>{title}</h2>
+          {title && <h2>{title}</h2>}
         </div>
         {right && <div className="pitch-lamina__right">{right}</div>}
       </header>
