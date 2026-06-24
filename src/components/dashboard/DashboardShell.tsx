@@ -1,5 +1,5 @@
 import { cn } from '@/lib/cn';
-import { Activity, AlertTriangle, BarChart3, Boxes, Database, FileBarChart2, Lightbulb, Map, Receipt, Rocket, ShoppingBag, Users } from 'lucide-react';
+import { Activity, BarChart3, Boxes, Database, FileBarChart2, Lightbulb, Map, Receipt, Rocket, ShoppingBag, Users } from 'lucide-react';
 import type { ReactNode } from 'react';
 
 export interface NavItem { id: string; label: string; icon: ReactNode; hidden?: boolean }
@@ -54,12 +54,6 @@ export function DashboardShell({
             <span className="hidden md:inline-flex items-center gap-1.5 rounded-full bg-white/5 px-2.5 py-1 ring-1 ring-white/10 text-white/80">
               <span className="h-1.5 w-1.5 rounded-full bg-brand-sky animate-pulse-dot" /> {period}
             </span>
-            {fallback && (
-              <span className="inline-flex items-center gap-1 rounded-full bg-amber-400/15 px-2.5 py-1 text-amber-100 ring-1 ring-amber-300/40">
-                <AlertTriangle size={12} /> Muestra
-              </span>
-            )}
-            <span className="hidden lg:inline text-white/50 font-mono text-[10px] truncate max-w-[260px]">{source}</span>
           </div>
         </div>
         <div className="h-px w-full bg-gradient-to-r from-transparent via-brand-sky/60 to-transparent" />
@@ -95,7 +89,6 @@ export function DashboardShell({
               <div className="mt-3 mx-1 rounded-xl border border-brand-line bg-brand-surface p-3">
                 <div className="text-[10px] uppercase tracking-wider text-slate-400 mb-1">Periodo</div>
                 <div className="text-sm font-semibold text-brand-ink">{period}</div>
-                <div className="text-[10px] text-slate-500 mt-0.5 font-mono truncate">{source}</div>
               </div>
             </nav>
           </aside>

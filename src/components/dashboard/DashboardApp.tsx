@@ -17,7 +17,7 @@ import { workbookData, findSheet, findColumn, type ColumnSpec } from '@/lib/data
 import { groupSum, sumBy } from '@/lib/filters';
 import { pdfReference } from '@/data/pdf-reference';
 import { getResumenMensual, getCxcTotal } from '@/lib/resumen';
-import { AlertTriangle, BadgeDollarSign, Boxes, Coins, Eye, PackageCheck, Target, TrendingDown, TrendingUp, Users } from 'lucide-react';
+import { BadgeDollarSign, Boxes, Coins, Eye, PackageCheck, Target, TrendingDown, TrendingUp, Users } from 'lucide-react';
 
 export default function DashboardApp() {
   const [section, setSection] = useState<string>('resumen');
@@ -43,9 +43,6 @@ export default function DashboardApp() {
 }
 
 // ---------- helpers ----------
-function SampleBadge() {
-  return <Badge tone="warn"><AlertTriangle size={11} /> Muestra visual</Badge>;
-}
 function tone(n: number): 'positive' | 'alert' | 'neutral' {
   if (n > 0.01) return 'positive';
   if (n < -0.01) return 'alert';
@@ -103,7 +100,7 @@ function ResumenSection() {
   return (
     <div className="space-y-4">
       <Card>
-        <CardHeader title="Resumen ejecutivo" subtitle={`Cierre ${period()} · visión integral del mes`} right={<Badge tone="brand">{workbookData.sheets.length} hojas cargadas</Badge>} />
+        <CardHeader title="Resumen ejecutivo" subtitle={`Cierre ${period()} · visión integral del mes`} />
         <KpiGrid items={items} cols={4} />
       </Card>
       <Card>
@@ -112,11 +109,11 @@ function ResumenSection() {
       </Card>
       <div className="grid md:grid-cols-2 gap-4">
         <Card>
-          <CardHeader title="Ventas por región — año actual vs anterior" subtitle="Azul: 2026 (actual) · Celeste: 2025 (anterior)" right={regSheet ? <Badge tone="ok">Datos reales</Badge> : fallbackBadge()} />
+          <CardHeader title="Ventas por región — año actual vs anterior" subtitle="Azul: 2026 (actual) · Celeste: 2025 (anterior)" />
           <D3BarChart data={regionData} format={(n) => fmtCurrency(n, { short: true })} />
         </Card>
         <Card>
-          <CardHeader title="Distribución de ventas por región" right={regSheet ? <Badge tone="ok">Datos reales</Badge> : fallbackBadge()} />
+          <CardHeader title="Distribución de ventas por región" />
           <D3DonutChart data={regionData.map((r) => ({ key: r.key, value: r.value }))} format={(n) => fmtCurrency(n, { short: true })} />
         </Card>
       </div>
@@ -124,8 +121,8 @@ function ResumenSection() {
   );
 
   function period() { return pdfReference.period; }
-  function fallbackBadge() { return workbookData.hasRealData ? undefined : <SampleBadge />; }
 }
+
 
 // ---------- Ventas ----------
 function VentasSection() {
@@ -170,7 +167,7 @@ function VentasSection() {
   return (
     <div className="space-y-4">
       <Card>
-        <CardHeader title="Ventas" subtitle="Evolución mensual + ranking por región" right={<Badge tone="ok">Datos reales</Badge>} />
+        <CardHeader title="Ventas" subtitle="Evolución mensual + ranking por región" />
         <KpiGrid items={items} cols={4} />
       </Card>
       {monthBar.length > 0 && (
@@ -198,11 +195,11 @@ function FallbackVentas({ note }: { note?: string } = {}) {
   return (
     <div className="space-y-4">
       <Card>
-        <CardHeader title="Ventas" subtitle={note ?? 'Mostrando datos del PDF como referencia.'} right={<SampleBadge />} />
+        <CardHeader title="Ventas" subtitle={note} />
         <KpiGrid items={items} cols={4} />
       </Card>
       <Card>
-        <CardHeader title="Ventas vs cuota por región" right={<SampleBadge />} />
+        <CardHeader title="Ventas vs cuota por región" />
         <D3BarChart data={pdfReference.regiones.map((r) => ({ key: r.region, value: r.ventas, compare: r.cuota }))} format={(n) => fmtCurrency(n, { short: true })} />
       </Card>
     </div>
@@ -268,7 +265,7 @@ function RegionesSection() {
   return (
     <div className="space-y-4">
       <Card>
-        <CardHeader title="Regiones de Venezuela" subtitle={`${regRows.length} regiones · cierre ${pdfReference.period}`} right={<Badge tone="ok">Datos reales</Badge>} />
+        <CardHeader title="Regiones de Venezuela" subtitle={`${regRows.length} regiones · cierre ${pdfReference.period}`} />
         <KpiGrid items={[
           { label: `Líder USD · ${regRows[0]?.region ?? '—'}`, value: regRows[0] ? fmtCurrency(regRows[0].actual, { short: true }) : '—', caption: regRows[0] ? `${fmtPercent(regRows[0].peso)} del total · ${fmtDelta(regRows[0].varUsd)} vs 2025` : undefined, tone: regRows[0] ? tone(regRows[0].varUsd) : 'neutral' },
           { label: 'Total ventas USD', value: fmtCurrency(totalActual, { short: true }), caption: `vs ${fmtCurrency(totalAnt, { short: true })} 2025`, tone: tone(varTotal), delta: fmtDelta(varTotal) },
@@ -279,11 +276,11 @@ function RegionesSection() {
 
       <div className="grid md:grid-cols-2 gap-4">
         <Card>
-          <CardHeader title="Ranking regiones por USD" subtitle="Ventas año 2026 (USD)" right={<Badge tone="ok">Datos reales</Badge>} />
+          <CardHeader title="Ranking regiones por USD" subtitle="Ventas año 2026 (USD)" />
           <D3HorizontalBarChart data={topUsd} format={(n) => fmtCurrency(n, { short: true })} color="#01205e" />
         </Card>
         <Card>
-          <CardHeader title="Ranking regiones por unidades" subtitle="Año 2026 (unidades)" right={<Badge tone="ok">Datos reales</Badge>} />
+          <CardHeader title="Ranking regiones por unidades" subtitle="Año 2026 (unidades)" />
           <D3HorizontalBarChart data={topUnd} format={(n) => fmtNumber(n, { short: true })} color="#1f5dc9" />
         </Card>
       </div>
@@ -352,7 +349,7 @@ function EstadosCard({ sheet }: { sheet: import('@/lib/data-inference').SheetDat
   return (
     <>
       <Card>
-        <CardHeader title="Estados de Venezuela" subtitle={`${rows.length} estados · cierre ${pdfReference.period}`} right={<Badge tone="ok">Datos reales</Badge>} />
+        <CardHeader title="Estados de Venezuela" subtitle={`${rows.length} estados · cierre ${pdfReference.period}`} />
         <KpiGrid items={[
           { label: `Líder USD · ${rows[0]?.estado ?? '—'}`, value: rows[0] ? fmtCurrency(rows[0].actual, { short: true }) : '—', caption: rows[0] ? `${rows[0].region} · ${fmtPercent(rows[0].peso)} · ${fmtDelta(rows[0].varUsd)}` : undefined, tone: rows[0] ? tone(rows[0].varUsd) : 'neutral' },
           { label: `Líder unidades · ${topUnd[0]?.key ?? '—'}`, value: topUnd[0] ? fmtNumber(topUnd[0].value, { short: true }) : '—' },
@@ -363,11 +360,11 @@ function EstadosCard({ sheet }: { sheet: import('@/lib/data-inference').SheetDat
 
       <div className="grid md:grid-cols-2 gap-4">
         <Card>
-          <CardHeader title="Top 15 estados por USD" subtitle="Ventas año 2026 (USD)" right={<Badge tone="ok">Datos reales</Badge>} />
+          <CardHeader title="Top 15 estados por USD" subtitle="Ventas año 2026 (USD)" />
           <D3HorizontalBarChart data={topUsd} format={(n) => fmtCurrency(n, { short: true })} color="#01205e" />
         </Card>
         <Card>
-          <CardHeader title="Top 15 estados por unidades" subtitle="Año 2026 (unidades)" right={<Badge tone="ok">Datos reales</Badge>} />
+          <CardHeader title="Top 15 estados por unidades" subtitle="Año 2026 (unidades)" />
           <D3HorizontalBarChart data={topUnd} format={(n) => fmtNumber(n, { short: true })} color="#1f5dc9" />
         </Card>
       </div>
@@ -381,19 +378,63 @@ function EstadosCard({ sheet }: { sheet: import('@/lib/data-inference').SheetDat
 }
 
 function RegionFallback() {
-  const data = pdfReference.regiones.map((r) => ({ key: r.region, value: r.ventas }));
+  const regs = pdfReference.regiones as Array<{ region: string; ventas: number; cuota: number }>;
+  const sorted = [...regs].sort((a, b) => b.ventas - a.ventas);
+  const totalVentas = regs.reduce((s, r) => s + r.ventas, 0);
+  const totalCuota  = regs.reduce((s, r) => s + r.cuota,  0);
+  const cobertura   = totalCuota > 0 ? totalVentas / totalCuota : 0;
+
+  const byVentas    = sorted.map((r) => ({ key: r.region, value: r.ventas }));
+  const byCobertura = [...regs]
+    .sort((a, b) => b.ventas / b.cuota - a.ventas / a.cuota)
+    .map((r) => ({ key: r.region, value: r.cuota > 0 ? r.ventas / r.cuota : 0 }));
+
+  const cols: ColumnSpec[] = [
+    { key: 'region',    label: 'Región',               type: 'category', uniqueCount: 0, filterable: false, role: 'dimension' },
+    { key: 'ventas',    label: 'Ventas $ (referencia)', type: 'currency', uniqueCount: 0, filterable: true,  role: 'measure' },
+    { key: 'cuota',     label: 'Cuota $',               type: 'currency', uniqueCount: 0, filterable: true,  role: 'measure' },
+    { key: 'cobertura', label: '% Cobertura',           type: 'percent',  uniqueCount: 0, filterable: true,  role: 'measure' },
+  ];
+  const tableRows = sorted.map((r) => ({ ...r, cobertura: r.cuota > 0 ? r.ventas / r.cuota : 0 }));
+
   return (
-    <Card>
-      <CardHeader title="Regiones / Estados" subtitle="Ranking de ventas por región" right={<SampleBadge />} />
-      <D3HorizontalBarChart data={data} format={(n) => fmtCurrency(n, { short: true })} color="#00B050" />
-    </Card>
+    <div className="space-y-4">
+      <Card>
+        <CardHeader
+          title="Regiones / Estados"
+          subtitle="Regiones y estados de Venezuela"
+        />
+        <KpiGrid items={[
+          { label: `Líder · ${sorted[0]?.region ?? '—'}`, value: fmtCurrency(sorted[0]?.ventas ?? 0, { short: true }), caption: `Cuota ${fmtCurrency(sorted[0]?.cuota ?? 0, { short: true })}`, tone: sorted[0] ? tone(sorted[0].ventas / sorted[0].cuota - 1) : 'neutral' },
+          { label: 'Total ventas USD', value: fmtCurrency(totalVentas, { short: true }), caption: `Cuota ${fmtCurrency(totalCuota, { short: true })}`, tone: tone(cobertura - 1) },
+          { label: 'Cobertura total', value: fmtPercent(cobertura), tone: cobertura >= 0.9 ? 'positive' : 'warn', caption: 'Cumplimiento' },
+          { label: 'Regiones', value: String(regs.length), caption: 'Activas en el periodo' },
+        ]} cols={4} />
+      </Card>
+
+      <div className="grid md:grid-cols-2 gap-4">
+        <Card>
+          <CardHeader title="Ventas por región" subtitle="Año actual (USD)" />
+          <D3HorizontalBarChart data={byVentas} format={(n) => fmtCurrency(n, { short: true })} color="#01205e" />
+        </Card>
+        <Card>
+          <CardHeader title="Cobertura por región" subtitle="% ventas vs cuota" />
+          <D3HorizontalBarChart data={byCobertura} format={(n) => fmtPercent(n)} color="#1f5dc9" />
+        </Card>
+      </div>
+
+      <Card>
+        <CardHeader title="Detalle por región" />
+        <Table columns={cols} rows={tableRows} pageSize={tableRows.length} dense />
+      </Card>
+    </div>
   );
 }
 
 // ---------- Proveedores ----------
 function ProveedoresSection() {
   const sheet = findSheet(/proveedor|laboratorio/i);
-  if (!sheet) return <Card><CardHeader title="Proveedores / Laboratorios" right={<SampleBadge />} /><p className="text-sm text-slate-500">No se detectó hoja específica de proveedores.</p></Card>;
+  if (!sheet) return <Card><CardHeader title="Proveedores / Laboratorios" /><p className="text-sm text-slate-500">No se detectó hoja específica de proveedores.</p></Card>;
 
   // Block A: proveedor ranking by USD (left half of sheet)
   const byVal = sheet.rows
@@ -472,7 +513,7 @@ function ProveedoresSection() {
   return (
     <div className="space-y-4">
       <Card>
-        <CardHeader title="Proveedores / Laboratorios" subtitle={`${byVal.length} proveedores · ${fmtCurrency(totalUsd, { short: true })} ventas · ${fmtNumber(totalUnd, { short: true })} unidades`} right={<Badge tone="ok">Datos reales</Badge>} />
+        <CardHeader title="Proveedores / Laboratorios" subtitle={`${byVal.length} proveedores · ${fmtCurrency(totalUsd, { short: true })} ventas · ${fmtNumber(totalUnd, { short: true })} unidades`} />
         <KpiGrid items={[
           { label: `Líder USD · ${byVal[0]?.proveedor ?? '—'}`, value: byVal[0] ? fmtCurrency(byVal[0].actual, { short: true }) : '—', caption: byVal[0] ? `${fmtPercent(byVal[0].peso)} del total · ${fmtDelta(byVal[0].varUsd)} vs 2025` : undefined, tone: byVal[0] ? tone(byVal[0].varUsd) : 'neutral' },
           { label: `Líder unidades · ${byUnits[0]?.proveedor ?? '—'}`, value: byUnits[0] ? fmtNumber(byUnits[0].unid, { short: true }) : '—', caption: byUnits[0] ? `${fmtCurrency(byUnits[0].actual, { short: true })} · ${fmtDelta(byUnits[0].varUnd)} und` : undefined, tone: byUnits[0] ? tone(byUnits[0].varUnd) : 'neutral' },
@@ -483,11 +524,11 @@ function ProveedoresSection() {
 
       <div className="grid md:grid-cols-2 gap-4">
         <Card>
-          <CardHeader title="Top 15 proveedores por USD" subtitle="Ventas año 2026 (USD)" right={<Badge tone="ok">Datos reales</Badge>} />
+          <CardHeader title="Top 15 proveedores por USD" subtitle="Ventas año 2026 (USD)" />
           <D3HorizontalBarChart data={topVal} format={(n) => fmtCurrency(n, { short: true })} color="#01205e" />
         </Card>
         <Card>
-          <CardHeader title="Ranking laboratorios por unidades" subtitle="Top 15 año 2026 (unidades)" right={<Badge tone="ok">Datos reales</Badge>} />
+          <CardHeader title="Ranking laboratorios por unidades" subtitle="Top 15 año 2026 (unidades)" />
           <D3HorizontalBarChart data={topUnits} format={(n) => fmtNumber(n, { short: true })} color="#1f5dc9" />
         </Card>
       </div>
@@ -546,11 +587,11 @@ function CategoriasSection() {
     <div className="space-y-4">
       <div className="grid md:grid-cols-2 gap-4">
         <Card>
-          <CardHeader title="Mix por categoría" subtitle="Distribución de ventas USD año 2026" right={<Badge tone="ok">Datos reales</Badge>} />
+          <CardHeader title="Mix por categoría" subtitle="Distribución de ventas USD año 2026" />
           <D3DonutChart data={donut} format={(n) => fmtCurrency(n, { short: true })} />
         </Card>
         <Card>
-          <CardHeader title="Ranking categorías por USD" right={<Badge tone="ok">Datos reales</Badge>} />
+          <CardHeader title="Ranking categorías por USD" />
           <D3HorizontalBarChart data={bar} format={(n) => fmtCurrency(n, { short: true })} color="#01205e" />
         </Card>
       </div>
@@ -565,7 +606,7 @@ function CategoriasSection() {
 // ---------- Clientes ----------
 function ClientesSection() {
   const sheet = findSheet(/cliente/i);
-  if (!sheet) return <Card><CardHeader title="Clientes" right={<SampleBadge />} /><p className="text-sm text-slate-500">No se detectó hoja específica de clientes. Usá el explorador.</p></Card>;
+  if (!sheet) return <Card><CardHeader title="Clientes" /><p className="text-sm text-slate-500">No se detectó hoja específica de clientes. Usá el explorador.</p></Card>;
   const dim = findColumn(sheet, /(cliente|razon)/i) || sheet.columns.find((c) => c.role === 'dimension');
   const meas = findColumn(sheet, /(venta|valor|monto|actual)/i) || sheet.columns.find((c) => c.role === 'measure');
   if (!dim || !meas) return <Card><CardHeader title="Clientes" /><p className="text-sm text-slate-500">Columnas insuficientes.</p></Card>;
@@ -573,7 +614,7 @@ function ClientesSection() {
   return (
     <div className="space-y-4">
       <Card>
-        <CardHeader title="Top clientes" subtitle={`Por ${meas.label}`} right={<Badge tone="ok">Datos reales</Badge>} />
+        <CardHeader title="Top clientes" subtitle={`Por ${meas.label}`} />
         <D3HorizontalBarChart data={top} format={(n) => fmtCurrency(n, { short: true })} color="#12A8E0" />
       </Card>
       <Card>
@@ -629,7 +670,7 @@ function CxcSection() {
   return (
     <div className="space-y-4">
       <Card>
-        <CardHeader title="Cuentas por Cobrar — antigüedad" subtitle={`Total cartera ${fmtCurrency(total, { short: true })} · ${clientRows.length} clientes`} right={<Badge tone="ok">Datos reales</Badge>} />
+        <CardHeader title="Cuentas por Cobrar — antigüedad" subtitle={`Total cartera ${fmtCurrency(total, { short: true })} · ${clientRows.length} clientes`} />
         <KpiGrid items={[
           { label: 'Total cartera', value: fmtCurrency(total, { short: true }) },
           { label: 'Riesgo (+40 días)', value: fmtCurrency(riesgo, { short: true }), caption: fmtPercent(pctRiesgo) + ' del total', tone: pctRiesgo > 0.2 ? 'alert' : 'positive' },
@@ -639,14 +680,14 @@ function CxcSection() {
       </Card>
       <div className="grid md:grid-cols-2 gap-4">
         <Card>
-          <CardHeader title="Distribución por tramo de antigüedad" right={<Badge tone="ok">Datos reales</Badge>} />
+          <CardHeader title="Distribución por tramo de antigüedad" />
           <D3DonutChart data={bucketTotals} format={(n) => fmtCurrency(n, { short: true })} />
           <p className="mt-3 text-xs text-amber-700 bg-amber-50 border border-amber-200 rounded p-2">
             Tramos +40 días concentran {fmtPercent(pctRiesgo)} de la cartera. Recomendación: cruce con visitas y ventas del cliente.
           </p>
         </Card>
         <Card>
-          <CardHeader title="Top 12 clientes por saldo" right={<Badge tone="ok">Datos reales</Badge>} />
+          <CardHeader title="Top 12 clientes por saldo" />
           <D3HorizontalBarChart data={topClients} format={(n) => fmtCurrency(n, { short: true })} color="#D92929" />
         </Card>
       </div>
@@ -668,7 +709,7 @@ function VisitasSection() {
     return (
       <div className="space-y-4">
         <Card>
-          <CardHeader title="Visitas comerciales" subtitle={`Acumulado periodo: ${fmtNumber(pdfReference.kpis.visitasComerciales, { short: true })}`} right={<SampleBadge />} />
+          <CardHeader title="Visitas comerciales" subtitle={`Acumulado periodo: ${fmtNumber(pdfReference.kpis.visitasComerciales, { short: true })}`} />
           <D3HorizontalBarChart
             data={pdfReference.visitasPorRegion.map((r) => ({ key: r.region, value: r.visitas }))}
             format={(n) => fmtNumber(n, { integer: true })}
@@ -676,7 +717,7 @@ function VisitasSection() {
           />
         </Card>
         <Card>
-          <CardHeader title="Heatmap visitas por región / mes" right={<SampleBadge />} />
+          <CardHeader title="Heatmap visitas por región / mes" />
           <D3Heatmap data={heat} format={(n) => fmtNumber(n, { integer: true })} />
         </Card>
       </div>
@@ -688,7 +729,7 @@ function VisitasSection() {
   const data = groupSum(sheet.rows, dim.key, meas.key);
   return (
     <Card>
-      <CardHeader title="Visitas por región" right={<Badge tone="ok">Datos reales</Badge>} />
+      <CardHeader title="Visitas por región" />
       <D3HorizontalBarChart data={data} format={(n) => fmtNumber(n, { integer: true })} color="#0078D4" />
     </Card>
   );
