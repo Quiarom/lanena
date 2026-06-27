@@ -30,14 +30,14 @@ export function fmtPercent(n: number | null | undefined) {
   return nfPct.format(Number(n));
 }
 export function fmtByType(v: unknown, type: ColType): string {
-  if (v === null || v === undefined || v === '') return '—';
+  const empty = v === null || v === undefined || v === '';
   switch (type) {
-    case 'currency': return fmtCurrency(Number(v));
-    case 'percent':  return fmtPercent(Number(v));
-    case 'number':   return fmtNumber(Number(v));
+    case 'currency': return fmtCurrency(empty ? 0 : Number(v));
+    case 'percent':  return fmtPercent(empty ? 0 : Number(v));
+    case 'number':   return fmtNumber(empty ? 0 : Number(v));
     case 'date':
-    case 'month':    return String(v).slice(0, 10);
-    default: return String(v);
+    case 'month':    return empty ? '—' : String(v).slice(0, 10);
+    default:         return empty ? '—' : String(v);
   }
 }
 export function fmtDelta(n: number | null | undefined) {

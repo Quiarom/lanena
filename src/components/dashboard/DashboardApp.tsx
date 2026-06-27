@@ -358,9 +358,9 @@ function EstadosCard({ sheet }: { sheet: import('@/lib/data-inference').SheetDat
         <CardHeader title="Estados de Venezuela" subtitle={`${rows.length} estados · cierre ${pdfReference.period}`} />
         <KpiGrid items={[
           { label: `Líder USD · ${rows[0]?.estado ?? '—'}`, value: rows[0] ? fmtCurrency(rows[0].actual, { short: true }) : '—', caption: rows[0] ? `${rows[0].region} · ${fmtPercent(rows[0].peso)} · ${fmtDelta(rows[0].varUsd)}` : undefined, tone: rows[0] ? tone(rows[0].varUsd) : 'neutral' },
-          { label: `Líder unidades · ${leaderUnidades?.estado ?? '—'}`, value: leaderUnidades ? fmtNumber(leaderUnidades.unid, { short: true }) : '—' },
+          { label: `Líder unidades · ${leaderUnidades?.estado ?? '—'}`, value: leaderUnidades ? fmtNumber(leaderUnidades.unid, { short: true }) : '—', caption: leaderUnidades ? `${fmtDelta(leaderUnidades.varUnd)} vs 2025` : undefined, tone: leaderUnidades ? tone(leaderUnidades.varUnd) : 'neutral' },
           { label: 'Total ventas USD', value: fmtCurrency(totalActual, { short: true }), caption: `vs ${fmtCurrency(totalAnt, { short: true })} 2025`, tone: tone(varTotal), delta: fmtDelta(varTotal) },
-          { label: 'Estados activos', value: String(rows.length), caption: `${fmtNumber(totalUnid, { short: true })} unidades` },
+          { label: 'Total unidades', value: fmtNumber(totalUnid, { short: true }), caption: `vs ${fmtNumber(totalUnidAnt, { short: true })} 2025`, tone: tone(varUnidTotal), delta: fmtDelta(varUnidTotal) },
         ]} cols={4} />
       </Card>
 

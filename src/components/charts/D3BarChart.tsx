@@ -68,7 +68,7 @@ export function D3BarChart({ data, height = 260, format = (n: number) => fmtNumb
       .attr('opacity', 0)
       .text((d) => ih - y(d.value) >= 20 ? format(d.value) : '')
       .transition().duration(700).delay((_, i) => i * 60 + 300).ease(d3.easeCubicOut)
-      .attr('y', (d) => y(d.value) - 5)
+      .attr('y', (d) => y(d.value) - 4)
       .attr('opacity', 1);
 
     if (hasCompare) {
@@ -93,7 +93,7 @@ export function D3BarChart({ data, height = 260, format = (n: number) => fmtNumb
         .attr('opacity', 0)
         .text((d) => ih - y(d.compare ?? 0) >= 20 ? format(d.compare ?? 0) : '')
         .transition().duration(700).delay((_, i) => i * 60 + 420).ease(d3.easeCubicOut)
-        .attr('y', (d) => y(d.compare ?? 0) - 5)
+        .attr('y', (d) => y(d.compare ?? 0) - 16)
         .attr('opacity', 1);
     }
   }, [data, height, format, colorA, colorB]);
